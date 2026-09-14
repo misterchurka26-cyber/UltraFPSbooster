@@ -1,48 +1,56 @@
 --========================================================
--- ULTRA FPS BOOST EXTREME v5
--- MAX FPS / NO LOOPS / NO HEARTBEAT
+-- ARCIZZ0 BOOSTER
+-- ULTRA FPS v6
+-- ZERO RUNTIME WORLD OPTIMIZATION
 --
--- Делает:
---   • Все обычные детали -> SmoothPlastic
---   • Neon сохраняется
---   • MaterialVariant -> ""
---   • MaterialService MaterialVariant -> удаляется
---   • MeshPart TextureID -> ""
---   • SpecialMesh TextureId -> ""
---   • SurfaceAppearance -> удаляется
---   • Decal / Texture -> скрываются
---   • Тени -> OFF
---   • Reflectance -> 0
---   • Частицы/свет/лучи/трейлы -> OFF
---   • AnimationController -> удаляется
---   • Animator -> удаляется
---   • Animation -> AnimationId 0
+-- ЦЕЛЬ:
+-- Максимальный FPS во время игры.
 --
--- После начальной обработки НЕТ циклов.
+-- ПОСЛЕ СТАРТОВОЙ ОЧИСТКИ:
+--   НЕМАЕТ:
+--   ❌ Workspace.DescendantAdded
+--   ❌ Heartbeat
+--   ❌ RenderStepped
+--   ❌ while loops
+--   ❌ periodic scans
+--   ❌ постоянный поиск объектов
+--
+-- Это важно для плавности камеры и движения.
 --========================================================
 
+local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local Players = game:GetService("Players")
 local MaterialService = game:GetService("MaterialService")
 local UserSettings = game:GetService("UserSettings")
-
-
-
-
---========================================================
--- ARCIZZ0 BOOSTER INTRO GUI
--- ZERO LOOP / ZERO HEARTBEAT / ZERO RENDERSTEPPED
---========================================================
-
 local TweenService = game:GetService("TweenService")
+
+local LocalPlayer = Players.LocalPlayer
+
+--========================================================
+-- CONFIG
+--========================================================
+
+local MAX_BATCH = 300
+
+--========================================================
+-- SAFE
+--========================================================
+
+local function safe(fn)
+	pcall(fn)
+end
+
+--========================================================
+-- ARCIZZ0 BOOSTER GUI
+--========================================================
 
 local function CreateBoosterGui()
 
-	-- Не создавать второй раз
-	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+
 	if not playerGui then
-		return
+		playerGui = LocalPlayer:WaitForChild("PlayerGui")
 	end
 
 	if playerGui:FindFirstChild("Arcizz0Booster") then
@@ -50,7 +58,7 @@ local function CreateBoosterGui()
 	end
 
 	--====================================================
-	-- SCREEN GUI
+	-- GUI
 	--====================================================
 
 	local screenGui = Instance.new("ScreenGui")
@@ -62,17 +70,14 @@ local function CreateBoosterGui()
 	screenGui.Parent = playerGui
 
 	--====================================================
-	-- MAIN FRAME
+	-- FRAME
 	--====================================================
 
 	local frame = Instance.new("Frame")
 	frame.Name = "BoosterFrame"
 
 	frame.AnchorPoint = Vector2.new(0.5, 0)
-
-	-- Начинает полностью выше экрана
 	frame.Position = UDim2.new(0.5, 0, 0, -95)
-
 	frame.Size = UDim2.new(0, 390, 0, 70)
 
 	frame.BackgroundColor3 = Color3.fromRGB(12, 2, 2)
@@ -100,24 +105,18 @@ local function CreateBoosterGui()
 	stroke.Parent = frame
 
 	--====================================================
-	-- TOP RED LINE
+	-- TOP LINE
 	--====================================================
 
 	local topLine = Instance.new("Frame")
-	topLine.Name = "TopLine"
-
-	topLine.Position = UDim2.new(0, 0, 0, 0)
 	topLine.Size = UDim2.new(1, 0, 0, 3)
+	topLine.Position = UDim2.new(0, 0, 0, 0)
 
 	topLine.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
 	topLine.BorderSizePixel = 0
 
 	topLine.ZIndex = 11
 	topLine.Parent = frame
-
-	local topCorner = Instance.new("UICorner")
-	topCorner.CornerRadius = UDim.new(0, 3)
-	topCorner.Parent = topLine
 
 	--====================================================
 	-- TITLE
@@ -128,7 +127,6 @@ local function CreateBoosterGui()
 
 	title.AnchorPoint = Vector2.new(0.5, 0.5)
 	title.Position = UDim2.new(0.5, 0, 0.5, 0)
-
 	title.Size = UDim2.new(1, -30, 1, -10)
 
 	title.BackgroundTransparency = 1
@@ -146,25 +144,24 @@ local function CreateBoosterGui()
 	title.Parent = frame
 
 	--====================================================
-	-- TEXT GRADIENT
+	-- GRADIENT
 	--====================================================
 
 	local gradient = Instance.new("UIGradient")
-	gradient.Name = "RedGradient"
 
 	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 0, 0)),
-		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 25, 25)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(100, 0, 0)),
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(55, 0, 0)),
+		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 30, 30)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 0, 0)),
 		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 0, 0)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 0, 0)),
 	})
 
 	gradient.Offset = Vector2.new(-1, 0)
 	gradient.Parent = title
 
 	--====================================================
-	-- OPEN TWEEN
+	-- OPEN
 	--====================================================
 
 	local openTween = TweenService:Create(
@@ -180,42 +177,14 @@ local function CreateBoosterGui()
 	)
 
 	--====================================================
-	-- TEXT SHINE TWEENS
-	--
-	-- Без RenderStepped.
-	-- TweenService работает на стороне Roblox.
+	-- SHINE
 	--====================================================
 
-	local shine1 = TweenService:Create(
+	local shineTween = TweenService:Create(
 		gradient,
 		TweenInfo.new(
-			0.8,
-			Enum.EasingStyle.Linear,
-			Enum.EasingDirection.InOut
-		),
-		{
-			Offset = Vector2.new(1, 0)
-		}
-	)
-
-	local shine2 = TweenService:Create(
-		gradient,
-		TweenInfo.new(
-			0.8,
-			Enum.EasingStyle.Linear,
-			Enum.EasingDirection.InOut
-		),
-		{
-			Offset = Vector2.new(-1, 0)
-		}
-	)
-
-	local shine3 = TweenService:Create(
-		gradient,
-		TweenInfo.new(
-			0.8,
-			Enum.EasingStyle.Linear,
-			Enum.EasingDirection.InOut
+			1.1,
+			Enum.EasingStyle.Linear
 		),
 		{
 			Offset = Vector2.new(1, 0)
@@ -223,7 +192,7 @@ local function CreateBoosterGui()
 	)
 
 	--====================================================
-	-- CLOSE TWEEN
+	-- CLOSE
 	--====================================================
 
 	local closeTween = TweenService:Create(
@@ -238,41 +207,20 @@ local function CreateBoosterGui()
 		}
 	)
 
-	--====================================================
-	-- SHOW
-	--====================================================
-
 	openTween:Play()
-	shine1:Play()
-
-	shine1.Completed:Connect(function()
-		shine2:Play()
-	end)
-
-	shine2.Completed:Connect(function()
-		shine3:Play()
-	end)
-
-	--====================================================
-	-- WAIT 3 SECONDS
-	--====================================================
+	shineTween:Play()
 
 	task.delay(3, function()
 
-		-- Если GUI уже удалили
 		if not screenGui.Parent then
 			return
 		end
 
-		-- Останавливаем возможное переливание
-		shine1:Cancel()
-		shine2:Cancel()
-		shine3:Cancel()
+		shineTween:Cancel()
 
-		-- Уезжаем наверх
 		closeTween:Play()
 
-		closeTween.Completed:Connect(function()
+		closeTween.Completed:Once(function()
 
 			if screenGui then
 				screenGui:Destroy()
@@ -281,37 +229,22 @@ local function CreateBoosterGui()
 		end)
 
 	end)
-end
 
---========================================================
--- FIRST EXECUTION
---========================================================
+end
 
 task.defer(CreateBoosterGui)
-
---========================================================
--- CONFIG
---========================================================
-
-local MAX_BATCH = 300
-
---========================================================
--- SAFE
---========================================================
-
-local function safe(fn)
-	pcall(fn)
-end
 
 --========================================================
 -- GRAPHICS QUALITY
 --========================================================
 
 safe(function()
-	local settingsObject =
+
+	local gameSettings =
 		UserSettings():GetService("UserGameSettings")
 
-	settingsObject.GraphicsQualityLevel = 1
+	gameSettings.GraphicsQualityLevel = 1
+
 end)
 
 safe(function()
@@ -346,30 +279,29 @@ safe(function()
 	Lighting.Technology = Enum.Technology.Compatibility
 end)
 
--- Убираем уже существующие post effects.
+--========================================================
+-- POST EFFECTS
+--========================================================
+
 for _, obj in ipairs(Lighting:GetChildren()) do
+
 	if obj:IsA("PostEffect") then
+
 		safe(function()
 			obj.Enabled = false
 		end)
+
 	end
 end
 
 --========================================================
--- MATERIALSERVICE
---
--- MaterialVariant может содержать ColorMap,
--- NormalMap, RoughnessMap, MetalnessMap и т.д.
+-- MATERIAL SERVICE
 --========================================================
 
 for _, obj in ipairs(MaterialService:GetChildren()) do
-	if obj:IsA("MaterialVariant") then
 
-		safe(function()
-			obj:Destroy()
-		end)
-
-	elseif obj:IsA("TerrainDetail") then
+	if obj:IsA("MaterialVariant")
+		or obj:IsA("TerrainDetail") then
 
 		safe(function()
 			obj:Destroy()
@@ -382,7 +314,8 @@ end
 -- TERRAIN
 --========================================================
 
-local terrain = Workspace:FindFirstChildOfClass("Terrain")
+local terrain =
+	Workspace:FindFirstChildOfClass("Terrain")
 
 if terrain then
 
@@ -405,10 +338,34 @@ if terrain then
 end
 
 --========================================================
+-- VFX
+--========================================================
+
+local function removeVFX(obj)
+
+	if obj:IsA("ParticleEmitter")
+		or obj:IsA("Trail")
+		or obj:IsA("Beam")
+		or obj:IsA("Smoke")
+		or obj:IsA("Fire")
+		or obj:IsA("Sparkles")
+		or obj:IsA("Highlight") then
+
+		safe(function()
+			obj:Destroy()
+		end)
+
+		return true
+	end
+
+	return false
+end
+
+--========================================================
 -- ANIMATION
 --========================================================
 
-local function disableAnimationObject(obj)
+local function removeAnimation(obj)
 
 	if obj:IsA("AnimationController") then
 
@@ -416,14 +373,16 @@ local function disableAnimationObject(obj)
 			obj:Destroy()
 		end)
 
-		return
+		return true
 	end
 
 	if obj:IsA("Animator") then
 
 		safe(function()
 
-			for _, track in ipairs(obj:GetPlayingAnimationTracks()) do
+			for _, track in ipairs(
+				obj:GetPlayingAnimationTracks()
+			) do
 
 				pcall(function()
 					track:Stop(0)
@@ -437,7 +396,7 @@ local function disableAnimationObject(obj)
 			obj:Destroy()
 		end)
 
-		return
+		return true
 	end
 
 	if obj:IsA("Animation") then
@@ -446,56 +405,10 @@ local function disableAnimationObject(obj)
 			obj.AnimationId = "rbxassetid://0"
 		end)
 
-	end
-end
-
---========================================================
--- CHARACTER CLEANUP
---========================================================
-
-local function cleanupCharacter(character)
-
-	if not character or not character.Parent then
-		return
+		return true
 	end
 
-	-- Одежда / аксессуары
-	for _, child in ipairs(character:GetChildren()) do
-
-		if child:IsA("Accessory")
-			or child:IsA("Shirt")
-			or child:IsA("Pants")
-			or child:IsA("ShirtGraphic") then
-
-			safe(function()
-				child:Destroy()
-			end)
-
-		end
-	end
-
-	-- Animate
-	local animate = character:FindFirstChild("Animate")
-
-	if animate then
-
-		safe(function()
-			animate:Destroy()
-		end)
-
-	end
-
-	-- Анимационные объекты
-	for _, obj in ipairs(character:GetDescendants()) do
-
-		if obj:IsA("AnimationController")
-			or obj:IsA("Animator")
-			or obj:IsA("Animation") then
-
-			disableAnimationObject(obj)
-
-		end
-	end
+	return false
 end
 
 --========================================================
@@ -512,11 +425,15 @@ local function optimizeObject(obj)
 	-- ANIMATION
 	--====================================================
 
-	if obj:IsA("AnimationController")
-		or obj:IsA("Animator")
-		or obj:IsA("Animation") then
+	if removeAnimation(obj) then
+		return
+	end
 
-		disableAnimationObject(obj)
+	--====================================================
+	-- VFX
+	--====================================================
+
+	if removeVFX(obj) then
 		return
 	end
 
@@ -534,51 +451,7 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- MESHPART
-	--====================================================
-
-	if obj:IsA("MeshPart") then
-
-		-- Убираем legacy texture.
-		safe(function()
-			obj.TextureID = ""
-		end)
-
-		-- Убираем MaterialVariant.
-		safe(function()
-			obj.MaterialVariant = ""
-		end)
-
-		-- Самый дешёвый render fidelity.
-		safe(function()
-			obj.RenderFidelity = Enum.RenderFidelity.Performance
-		end)
-
-		-- SmoothPlastic.
-		-- Neon специально оставляем.
-		if obj.Material ~= Enum.Material.Neon then
-
-			safe(function()
-				obj.Material = Enum.Material.SmoothPlastic
-			end)
-
-		end
-
-		-- Тени.
-		safe(function()
-			obj.CastShadow = false
-		end)
-
-		-- Reflectance.
-		safe(function()
-			obj.Reflectance = 0
-		end)
-
-		return
-	end
-
-	--====================================================
-	-- SPECIALMESH
+	-- SPECIAL MESH
 	--====================================================
 
 	if obj:IsA("SpecialMesh") then
@@ -591,18 +464,27 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- BASEPART
+	-- MESHPART
 	--====================================================
 
-	if obj:IsA("BasePart") then
+	if obj:IsA("MeshPart") then
 
-		-- MaterialVariant выключаем.
+		-- Убрать текстуру
+		safe(function()
+			obj.TextureID = ""
+		end)
+
+		-- Убрать MaterialVariant
 		safe(function()
 			obj.MaterialVariant = ""
 		end)
 
-		-- Всё -> SmoothPlastic,
-		-- кроме Neon.
+		-- Performance
+		safe(function()
+			obj.RenderFidelity = Enum.RenderFidelity.Performance
+		end)
+
+		-- Neon сохраняем
 		if obj.Material ~= Enum.Material.Neon then
 
 			safe(function()
@@ -611,12 +493,41 @@ local function optimizeObject(obj)
 
 		end
 
-		-- Тени.
+		-- Shadows OFF
 		safe(function()
 			obj.CastShadow = false
 		end)
 
-		-- Отражения.
+		-- Reflectance OFF
+		safe(function()
+			obj.Reflectance = 0
+		end)
+
+		return
+	end
+
+	--====================================================
+	-- BASEPART
+	--====================================================
+
+	if obj:IsA("BasePart") then
+
+		safe(function()
+			obj.MaterialVariant = ""
+		end)
+
+		if obj.Material ~= Enum.Material.Neon then
+
+			safe(function()
+				obj.Material = Enum.Material.SmoothPlastic
+			end)
+
+		end
+
+		safe(function()
+			obj.CastShadow = false
+		end)
+
 		safe(function()
 			obj.Reflectance = 0
 		end)
@@ -651,49 +562,7 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- PARTICLES
-	--====================================================
-
-	if obj:IsA("ParticleEmitter")
-		or obj:IsA("Smoke")
-		or obj:IsA("Fire")
-		or obj:IsA("Sparkles") then
-
-		safe(function()
-			obj.Enabled = false
-		end)
-
-		return
-	end
-
-	--====================================================
-	-- TRAIL
-	--====================================================
-
-	if obj:IsA("Trail") then
-
-		safe(function()
-			obj.Enabled = false
-		end)
-
-		return
-	end
-
-	--====================================================
-	-- BEAM
-	--====================================================
-
-	if obj:IsA("Beam") then
-
-		safe(function()
-			obj.Enabled = false
-		end)
-
-		return
-	end
-
-	--====================================================
-	-- LIGHT
+	-- LIGHTS
 	--====================================================
 
 	if obj:IsA("PointLight")
@@ -727,13 +596,81 @@ local function optimizeObject(obj)
 end
 
 --========================================================
--- STARTUP WORLD
---
--- Единственный массовый проход.
+-- CHARACTER
+--========================================================
+
+local function optimizeCharacter(character)
+
+	if not character or not character.Parent then
+		return
+	end
+
+	--====================================================
+	-- ACCESSORIES / CLOTHING
+	--====================================================
+
+	for _, child in ipairs(character:GetChildren()) do
+
+		if child:IsA("Accessory")
+			or child:IsA("Shirt")
+			or child:IsA("Pants")
+			or child:IsA("ShirtGraphic") then
+
+			safe(function()
+				child:Destroy()
+			end)
+
+		end
+	end
+
+	--====================================================
+	-- ANIMATE SCRIPT
+	--====================================================
+
+	local animate =
+		character:FindFirstChild("Animate")
+
+	if animate then
+
+		safe(function()
+			animate:Destroy()
+		end)
+
+	end
+
+	--====================================================
+	-- ALL CHARACTER OBJECTS
+	--====================================================
+
+	local descendants = character:GetDescendants()
+
+	for i = 1, #descendants do
+
+		local obj = descendants[i]
+
+		if obj and obj.Parent then
+			optimizeObject(obj)
+		end
+
+		if i % MAX_BATCH == 0 then
+			task.wait()
+		end
+	end
+
+end
+
+--========================================================
+-- ONE-TIME WORLD OPTIMIZATION
 --========================================================
 
 task.spawn(function()
 
+	print("============================================")
+	print(" Arcizz0 Booster")
+	print(" Starting optimization...")
+	print("============================================")
+
+	-- Только Workspace.
 	local objects = Workspace:GetDescendants()
 
 	for i = 1, #objects do
@@ -744,14 +681,14 @@ task.spawn(function()
 			optimizeObject(obj)
 		end
 
-		-- Только во время первоначальной загрузки.
 		if i % MAX_BATCH == 0 then
 			task.wait()
 		end
+
 	end
 
 	--====================================================
-	-- EXISTING CHARACTERS / NPC / BRAINROTS
+	-- EXISTING PLAYERS / NPC / BRAINROTS
 	--====================================================
 
 	for _, obj in ipairs(objects) do
@@ -759,92 +696,63 @@ task.spawn(function()
 		if obj:IsA("Model") then
 
 			if obj:FindFirstChildOfClass("Humanoid")
-				or obj:FindFirstChildOfClass("AnimationController", true)
-				or obj:FindFirstChildOfClass("Animator", true) then
+				or obj:FindFirstChildOfClass(
+					"AnimationController",
+					true
+				)
+				or obj:FindFirstChildOfClass(
+					"Animator",
+					true
+				) then
 
-				cleanupCharacter(obj)
+				task.spawn(function()
+
+					if obj.Parent then
+						optimizeCharacter(obj)
+					end
+
+				end)
 
 			end
 		end
 	end
 
 	print("============================================")
-	print(" ULTRA FPS BOOST EXTREME v5")
-	print(" INITIAL CLEANUP COMPLETE")
+	print(" Arcizz0 Booster")
+	print(" Optimization complete!")
+	print(" Runtime optimizer: OFF")
 	print("============================================")
 
 end)
 
 --========================================================
--- FUTURE OBJECTS
+-- PLAYER RESPAWN ONLY
 --
--- Единственная постоянная подписка.
---
--- Она НЕ сканирует Workspace.
--- Она получает только конкретно созданный объект.
---
--- Обрабатываются только объекты, которые реально могут
--- влиять на визуал.
---========================================================
-
-Workspace.DescendantAdded:Connect(function(obj)
-
-	if not obj then
-		return
-	end
-
-	-- Самые важные новые визуальные объекты.
-	if obj:IsA("MeshPart")
-		or obj:IsA("SpecialMesh")
-		or obj:IsA("SurfaceAppearance")
-		or obj:IsA("Decal")
-		or obj:IsA("Texture")
-		or obj:IsA("MaterialVariant")
-		or obj:IsA("ParticleEmitter")
-		or obj:IsA("Smoke")
-		or obj:IsA("Fire")
-		or obj:IsA("Sparkles")
-		or obj:IsA("Trail")
-		or obj:IsA("Beam")
-		or obj:IsA("PointLight")
-		or obj:IsA("SpotLight")
-		or obj:IsA("SurfaceLight")
-		or obj:IsA("AnimationController")
-		or obj:IsA("Animator")
-		or obj:IsA("Animation")
-		or obj:IsA("VideoFrame") then
-
-		optimizeObject(obj)
-
-	end
-end)
-
---========================================================
--- PLAYER SPAWN
---
--- Только при появлении нового персонажа.
+-- Это единственное постоянное событие.
+-- Оно относится только к персонажу игрока.
 --========================================================
 
 local function setupPlayer(player)
 
+	-- Текущий персонаж
 	if player.Character then
 
 		task.defer(function()
 
 			if player.Character then
-				cleanupCharacter(player.Character)
+				optimizeCharacter(player.Character)
 			end
 
 		end)
-
 	end
 
+	-- Новый персонаж после смерти
 	player.CharacterAdded:Connect(function(character)
 
 		task.defer(function()
 
 			if character and character.Parent then
-				cleanupCharacter(character)
+				optimizeCharacter(character)
 			end
 
 		end)
@@ -863,24 +771,22 @@ Players.PlayerAdded:Connect(setupPlayer)
 --========================================================
 
 print("============================================")
-print(" MAX FPS MODE")
+print(" ARCIZZ0 ULTRA FPS v6")
 print("============================================")
-print("Material         : SMOOTHPLASTIC")
+print("SmoothPlastic    : ON")
 print("Neon             : ALLOWED")
-print("MaterialVariant  : OFF")
+print("MaterialVariant  : REMOVED")
 print("MaterialService  : CLEAN")
-print("Mesh Texture     : OFF")
-print("SpecialMesh      : OFF")
-print("SurfaceAppearance: OFF")
-print("Decal            : OFF")
-print("Texture          : OFF")
+print("Mesh Texture     : REMOVED")
+print("SurfaceAppearance: REMOVED")
+print("VFX              : REMOVED")
 print("Shadows          : OFF")
-print("Particles        : OFF")
 print("Lights           : OFF")
 print("Animations       : OFF")
-print("Animator         : OFF")
-print("AnimationControl : OFF")
+print("Animator         : REMOVED")
+print("AnimationControl : REMOVED")
+print("Periodic Scan    : NONE")
 print("Heartbeat        : NONE")
 print("RenderStepped    : NONE")
-print("Periodic Scan    : NONE")
+print("World Monitoring : NONE")
 print("============================================")
