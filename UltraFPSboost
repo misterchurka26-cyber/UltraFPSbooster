@@ -1,3 +1,4 @@
+```lua
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
@@ -196,6 +197,12 @@ end)
 
 safe(function()
 	Lighting.GlobalShadows = false
+
+	Lighting:GetPropertyChangedSignal("GlobalShadows"):Connect(function()
+		if Lighting.GlobalShadows then
+			Lighting.GlobalShadows = false
+		end
+	end)
 end)
 
 safe(function()
@@ -349,13 +356,12 @@ local function optimizeObject(obj)
 			obj.TextureID = ""
 			obj.MaterialVariant = ""
 			obj.RenderFidelity = Enum.RenderFidelity.Performance
+			obj.CastShadow = false
+			obj.Reflectance = 0
 
 			if obj.Material ~= Enum.Material.Neon then
 				obj.Material = Enum.Material.SmoothPlastic
 			end
-
-			obj.CastShadow = false
-			obj.Reflectance = 0
 		end)
 
 		return
@@ -372,13 +378,12 @@ local function optimizeObject(obj)
 	if obj:IsA("BasePart") then
 		pcall(function()
 			obj.MaterialVariant = ""
+			obj.CastShadow = false
+			obj.Reflectance = 0
 
 			if obj.Material ~= Enum.Material.Neon then
 				obj.Material = Enum.Material.SmoothPlastic
 			end
-
-			obj.CastShadow = false
-			obj.Reflectance = 0
 		end)
 
 		return
@@ -433,6 +438,7 @@ local function optimizeObject(obj)
 		or obj:IsA("SurfaceLight") then
 
 		pcall(function()
+			obj.Shadows = false
 			obj.Enabled = false
 		end)
 
