@@ -1,6 +1,6 @@
 --========================================================
--- ULTRA FPS BOOST
--- Агрессивное снижение графики на клиенте
+-- ULTRA FPS BOOST EXTREME
+-- Агрессивное снижение графики + отключение анимаций
 --========================================================
 
 local Workspace = game:GetService("Workspace")
@@ -15,44 +15,42 @@ local player = Players.LocalPlayer
 --========================================================
 
 local CONFIG = {
-	-- Убирать текстуры
-	RemoveTextures = true,
 
-	-- Убирать SurfaceAppearance
+	-- ТЕКСТУРЫ
+	RemoveTextures = true,
 	RemoveSurfaceAppearance = true,
 
-	-- Убирать тени
+	-- ГРАФИКА
 	RemoveShadows = true,
-
-	-- Упрощать материалы
 	SimplifyMaterials = true,
-
-	-- Убирать отражения
 	RemoveReflectance = true,
 
-	-- Отключать частицы
+	-- ЭФФЕКТЫ
 	DisableParticles = true,
-
-	-- Отключать Trail / Beam
 	DisableTrails = true,
-
-	-- Отключать светящиеся источники
+	DisableBeams = true,
 	DisableLights = true,
-
-	-- Упрощать Terrain
-	SimplifyTerrain = true,
-
-	-- Делать экран немного темнее
-	DarkenScreen = true,
-
-	-- Выключить пост-эффекты
 	DisablePostEffects = true,
 
-	-- Сделать дальний мир менее заметным
+	-- АНИМАЦИИ
+	DisableAnimations = true,
+	DisableAnimationTracks = true,
+	DisableAnimator = false,
+
+	-- TERRAIN
+	SimplifyTerrain = true,
+
+	-- ЭКРАН
+	DarkenScreen = true,
+
+	-- ТУМАН
 	UseFog = false,
 
-	-- Агрессивность материала
+	-- МАТЕРИАЛ
 	Material = Enum.Material.Plastic,
+
+	-- ПОВТОРНАЯ ПРОВЕРКА
+	RecheckInterval = 5,
 }
 
 --========================================================
@@ -61,12 +59,9 @@ local CONFIG = {
 
 pcall(function()
 	local gameSettings = UserSettings():GetService("UserGameSettings")
-
-	-- Самый низкий доступный уровень качества
 	gameSettings.GraphicsQualityLevel = 1
 end)
 
--- Дополнительная попытка через RenderSettings
 pcall(function()
 	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 end)
@@ -101,28 +96,37 @@ local function optimizeLighting()
 		Lighting.Technology = Enum.Technology.Compatibility
 	end)
 
-	-- Удаляем дорогие пост-эффекты
+	-- Отключить дорогие эффекты
 	if CONFIG.DisablePostEffects then
+
 		for _, obj in ipairs(Lighting:GetChildren()) do
+
 			if obj:IsA("BloomEffect")
 				or obj:IsA("BlurEffect")
-				or obj:IsA("ColorCorrectionEffect")
 				or obj:IsA("DepthOfFieldEffect")
 				or obj:IsA("SunRaysEffect") then
 
 				obj.Enabled = false
+
+			elseif obj:IsA("ColorCorrectionEffect") then
+
+				if obj.Name ~= "UltraFPS_Dark" then
+					obj.Enabled = false
+				end
 			end
 		end
 	end
 
 	--====================================================
-	-- ТЕМНАЯ КАРТИНКА
+	-- ТЕМНЕЕ
 	--====================================================
 
 	if CONFIG.DarkenScreen then
+
 		local color = Lighting:FindFirstChild("UltraFPS_Dark")
 
 		if not color then
+
 			color = Instance.new("ColorCorrectionEffect")
 			color.Name = "UltraFPS_Dark"
 			color.Parent = Lighting
@@ -139,10 +143,13 @@ local function optimizeLighting()
 	--====================================================
 
 	if CONFIG.UseFog then
+
 		pcall(function()
+
 			Lighting.FogColor = Color3.fromRGB(40, 40, 40)
 			Lighting.FogStart = 80
 			Lighting.FogEnd = 250
+
 		end)
 	end
 end
@@ -150,10 +157,72 @@ end
 optimizeLighting()
 
 --========================================================
--- ОБРАБОТКА OBJECT
+-- ОСТАНОВКА АНИМАЦИЙ
+--========================================================
+
+local function stopAnimationsFromAnimator(animator)
+
+	if not animator or not animator:IsA("Animator") then
+		return
+	end
+
+	-- Остановить уже запущенные AnimationTrack
+	pcall(function()
+
+		for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+
+			if track then
+				pcall(function()
+					track:Stop(0)
+				end)
+			end
+
+		end
+
+	end)
+end
+
+--========================================================
+-- ОТКЛЮЧИТЬ АНИМАЦИИ В ОБЪЕКТЕ
+--========================================================
+
+local function optimizeAnimator(obj)
+
+	if not CONFIG.DisableAnimations then
+		return
+	end
+
+	-- Animator
+	if obj:IsA("Animator") then
+
+		stopAnimationsFromAnimator(obj)
+
+		if CONFIG.DisableAnimator then
+			pcall(function()
+				obj.Parent = nil
+			end)
+		end
+
+		return
+	end
+
+	-- AnimationTrack напрямую как Instance не существует
+	-- поэтому обрабатываем Animator выше.
+end
+
+--========================================================
+-- ОБРАБОТКА ОБЪЕКТОВ
 --========================================================
 
 local function optimizeObject(obj)
+
+	--====================================================
+	-- АНИМАЦИИ
+	--====================================================
+
+	if obj:IsA("Animator") then
+		optimizeAnimator(obj)
+	end
 
 	--====================================================
 	-- BASEPART
@@ -162,24 +231,38 @@ local function optimizeObject(obj)
 	if obj:IsA("BasePart") then
 
 		if CONFIG.RemoveShadows then
-			obj.CastShadow = false
+			pcall(function()
+				obj.CastShadow = false
+			end)
 		end
 
 		if CONFIG.RemoveReflectance then
-			obj.Reflectance = 0
+			pcall(function()
+				obj.Reflectance = 0
+			end)
 		end
 
 		if CONFIG.SimplifyMaterials then
+
 			pcall(function()
 				obj.Material = CONFIG.Material
 			end)
+
 		end
 
-		-- MeshPart
-		if obj:IsA("MeshPart") and CONFIG.RemoveTextures then
-			pcall(function()
-				obj.TextureID = ""
-			end)
+		--================================================
+		-- MESHPART
+		--================================================
+
+		if obj:IsA("MeshPart") then
+
+			if CONFIG.RemoveTextures then
+
+				pcall(function()
+					obj.TextureID = ""
+				end)
+
+			end
 
 			pcall(function()
 				obj.RenderFidelity = Enum.RenderFidelity.Performance
@@ -188,19 +271,26 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- DECAL / TEXTURE
+	-- TEXTURE / DECAL
 	--====================================================
 
 	if CONFIG.RemoveTextures then
 
 		if obj:IsA("Decal") or obj:IsA("Texture") then
-			obj.Transparency = 1
+
+			pcall(function()
+				obj.Transparency = 1
+			end)
+
 		end
 
-		-- SurfaceAppearance может быть очень тяжелым
 		if obj:IsA("SurfaceAppearance") then
+
 			if CONFIG.RemoveSurfaceAppearance then
-				obj:Destroy()
+				pcall(function()
+					obj:Destroy()
+				end)
+
 				return
 			end
 		end
@@ -217,18 +307,39 @@ local function optimizeObject(obj)
 			or obj:IsA("Fire")
 			or obj:IsA("Sparkles") then
 
-			obj.Enabled = false
-	end
+			pcall(function()
+				obj.Enabled = false
+			end)
+		end
 	end
 
 	--====================================================
-	-- TRAIL / BEAM
+	-- TRAIL
 	--====================================================
 
 	if CONFIG.DisableTrails then
 
-		if obj:IsA("Trail") or obj:IsA("Beam") then
-			obj.Enabled = false
+		if obj:IsA("Trail") then
+
+			pcall(function()
+				obj.Enabled = false
+			end)
+
+		end
+	end
+
+	--====================================================
+	-- BEAM
+	--====================================================
+
+	if CONFIG.DisableBeams then
+
+		if obj:IsA("Beam") then
+
+			pcall(function()
+				obj.Enabled = false
+			end)
+
 		end
 	end
 
@@ -242,7 +353,9 @@ local function optimizeObject(obj)
 			or obj:IsA("SpotLight")
 			or obj:IsA("SurfaceLight") then
 
-			obj.Enabled = false
+			pcall(function()
+				obj.Enabled = false
+			end)
 		end
 	end
 
@@ -254,25 +367,103 @@ local function optimizeObject(obj)
 
 		if obj:IsA("BloomEffect")
 			or obj:IsA("BlurEffect")
-			or obj:IsA("ColorCorrectionEffect")
 			or obj:IsA("DepthOfFieldEffect")
 			or obj:IsA("SunRaysEffect") then
 
-			obj.Enabled = false
+			pcall(function()
+				obj.Enabled = false
+			end)
 		end
 	end
 
 	--====================================================
-	-- GUI IMAGES
-	-- НЕ УДАЛЯЕМ GUI ПОЛНОСТЬЮ
+	-- VIDEO
 	--====================================================
 
-	-- Можно убрать изображения только в 3D-мире,
-	-- поэтому ImageLabels здесь специально не трогаем.
+	if obj:IsA("VideoFrame") then
+
+		pcall(function()
+			obj.Playing = false
+		end)
+
+		pcall(function()
+			obj.Visible = false
+		end)
+	end
 end
 
 --========================================================
--- ОБРАБОТАТЬ ВСЁ УЖЕ СУЩЕСТВУЮЩЕЕ
+-- CHARACTERS
+--========================================================
+
+local function optimizeCharacter(character)
+
+	if not character then
+		return
+	end
+
+	for _, obj in ipairs(character:GetDescendants()) do
+
+		-- Parts
+		if obj:IsA("BasePart") then
+
+			pcall(function()
+				obj.CastShadow = false
+			end)
+
+			pcall(function()
+				obj.Material = Enum.Material.Plastic
+			end)
+
+			pcall(function()
+				obj.Reflectance = 0
+			end)
+
+		end
+
+		-- Textures
+		if obj:IsA("Decal") or obj:IsA("Texture") then
+
+			pcall(function()
+				obj.Transparency = 1
+			end)
+
+		end
+
+		-- SurfaceAppearance
+		if obj:IsA("SurfaceAppearance") then
+
+			pcall(function()
+				obj:Destroy()
+			end)
+
+		end
+
+		-- Animator
+		if obj:IsA("Animator") then
+
+			stopAnimationsFromAnimator(obj)
+
+		end
+
+		-- Effects
+		if obj:IsA("ParticleEmitter")
+			or obj:IsA("Trail")
+			or obj:IsA("Beam")
+			or obj:IsA("Smoke")
+			or obj:IsA("Fire")
+			or obj:IsA("Sparkles") then
+
+			pcall(function()
+				obj.Enabled = false
+			end)
+
+		end
+	end
+end
+
+--========================================================
+-- ОБРАБОТАТЬ WORKSPACE
 --========================================================
 
 for _, obj in ipairs(Workspace:GetDescendants()) do
@@ -280,16 +471,23 @@ for _, obj in ipairs(Workspace:GetDescendants()) do
 end
 
 --========================================================
--- НОВЫЕ ОБЪЕКТЫ
+-- НОВЫЕ OBJECT
 --========================================================
 
 Workspace.DescendantAdded:Connect(function(obj)
 
-	-- маленькая задержка позволяет дождаться свойств
 	task.defer(function()
 
-		if obj.Parent then
-			optimizeObject(obj)
+		if not obj or not obj.Parent then
+			return
+		end
+
+		optimizeObject(obj)
+
+		-- Если добавился Animator,
+		-- сразу останавливаем его анимации
+		if obj:IsA("Animator") then
+			stopAnimationsFromAnimator(obj)
 		end
 
 	end)
@@ -321,63 +519,86 @@ if CONFIG.SimplifyTerrain then
 		pcall(function()
 			terrain.WaterTransparency = 1
 		end)
+
 	end
 end
 
 --========================================================
--- CHARACTER
+-- PLAYER CHARACTER
 --========================================================
-
-local function optimizeCharacter(character)
-
-	for _, obj in ipairs(character:GetDescendants()) do
-
-		if obj:IsA("BasePart") then
-			obj.CastShadow = false
-
-			pcall(function()
-				obj.Material = Enum.Material.Plastic
-			end)
-
-			obj.Reflectance = 0
-		end
-
-		if obj:IsA("Decal") or obj:IsA("Texture") then
-			obj.Transparency = 1
-		end
-
-		if obj:IsA("SurfaceAppearance") then
-			obj:Destroy()
-		end
-	end
-end
 
 if player.Character then
+
 	task.defer(function()
 		optimizeCharacter(player.Character)
 	end)
+
 end
 
 player.CharacterAdded:Connect(function(character)
-	task.wait(0.5)
+
+	task.wait(0.25)
+
 	optimizeCharacter(character)
+
 end)
 
 --========================================================
--- ПОВТОРНАЯ ОПТИМИЗАЦИЯ
+-- СЛЕДИТЬ ЗА НОВЫМИ АНИМАЦИЯМИ
 --========================================================
 
 task.spawn(function()
 
-	while task.wait(5) do
+	while task.wait(0.5) do
 
-		-- Иногда игра снова создает эффекты/текстуры,
-		-- поэтому периодически чистим их.
+		if not CONFIG.DisableAnimations then
+			break
+		end
+
+		-- Игрок
+		if player.Character then
+
+			for _, obj in ipairs(player.Character:GetDescendants()) do
+
+				if obj:IsA("Animator") then
+					stopAnimationsFromAnimator(obj)
+				end
+
+			end
+		end
+
+		-- Остальные персонажи
+		for _, otherPlayer in ipairs(Players:GetPlayers()) do
+
+			if otherPlayer.Character then
+
+				for _, obj in ipairs(otherPlayer.Character:GetDescendants()) do
+
+					if obj:IsA("Animator") then
+						stopAnimationsFromAnimator(obj)
+					end
+
+				end
+			end
+		end
+	end
+end)
+
+--========================================================
+-- АГРЕССИВНАЯ ПОВТОРНАЯ ОПТИМИЗАЦИЯ
+--========================================================
+
+task.spawn(function()
+
+	while task.wait(CONFIG.RecheckInterval) do
 
 		for _, obj in ipairs(Workspace:GetDescendants()) do
 
 			if obj:IsA("SurfaceAppearance") then
-				obj:Destroy()
+
+				pcall(function()
+					obj:Destroy()
+				end)
 
 			elseif obj:IsA("ParticleEmitter")
 				or obj:IsA("Trail")
@@ -386,28 +607,46 @@ task.spawn(function()
 				or obj:IsA("Fire")
 				or obj:IsA("Sparkles") then
 
-				obj.Enabled = false
+				pcall(function()
+					obj.Enabled = false
+				end)
 
 			elseif obj:IsA("PointLight")
 				or obj:IsA("SpotLight")
 				or obj:IsA("SurfaceLight") then
 
-				obj.Enabled = false
+				pcall(function()
+					obj.Enabled = false
+				end)
+
+			elseif obj:IsA("Animator") then
+
+				stopAnimationsFromAnimator(obj)
 
 			elseif obj:IsA("BasePart") then
 
-				obj.CastShadow = false
-				obj.Reflectance = 0
+				pcall(function()
+					obj.CastShadow = false
+				end)
+
+				pcall(function()
+					obj.Reflectance = 0
+				end)
 
 				pcall(function()
 					obj.Material = Enum.Material.Plastic
 				end)
 
 				if obj:IsA("MeshPart") then
+
 					pcall(function()
 						obj.TextureID = ""
+					end)
+
+					pcall(function()
 						obj.RenderFidelity = Enum.RenderFidelity.Performance
 					end)
+
 				end
 			end
 		end
@@ -416,14 +655,25 @@ task.spawn(function()
 	end
 end)
 
+--========================================================
+-- INFO
+--========================================================
+
 print("========================================")
-print("ULTRA FPS BOOST ENABLED")
-print("Textures: OFF")
-print("SurfaceAppearance: OFF")
-print("Shadows: OFF")
-print("Particles: OFF")
-print("Lights: OFF")
-print("Reflectance: OFF")
-print("Materials: PLASTIC")
-print("Graphics: LOW")
+print("        ULTRA FPS BOOST EXTREME")
+print("========================================")
+print("Textures          : OFF")
+print("SurfaceAppearance : OFF")
+print("Shadows           : OFF")
+print("Particles         : OFF")
+print("Trails            : OFF")
+print("Beams             : OFF")
+print("Lights            : OFF")
+print("Reflectance       : OFF")
+print("Materials         : PLASTIC")
+print("Post Effects      : OFF")
+print("Animations        : OFF")
+print("Animation Tracks  : STOPPED")
+print("Terrain Effects   : REDUCED")
+print("Graphics Quality  : LOW")
 print("========================================")
