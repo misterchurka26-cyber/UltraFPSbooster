@@ -1,68 +1,12 @@
---========================================================
--- ULTRA FPS BOOST EXTREME v7
--- MAX FPS / NO FREEZES / NO MAP-LOAD FPS DROP
---
--- Делает:
---   • Все обычные детали -> SmoothPlastic
---   • Neon сохраняется
---   • MaterialVariant -> ""
---   • MaterialService MaterialVariant -> удаляется
---   • MeshPart TextureID -> ""
---   • SpecialMesh TextureId -> ""
---   • SurfaceAppearance -> удаляется
---   • Decal / Texture -> скрываются
---   • Тени -> OFF
---   • Reflectance -> 0
---   • Частицы/свет/лучи/трейлы -> OFF
---   • AnimationController -> удаляется
---   • Animator -> удаляется
---   • Animation -> AnimationId 0
---
--- ЧТО НОВОГО В v7 (фикс просадки FPS во время загрузки карты):
---
---   1) Скрипт теперь ждёт game:IsLoaded() перед тем, как
---      начать сканировать Workspace. Раньше стартовый
---      проход мог запускаться ПАРАЛЛЕЛЬНО с тем, как сама
---      карта ещё грузится (стримятся меши/текстуры), и оба
---      процесса дрались за один и тот же кадр — это и
---      давало дополнительную просадку ~20 fps на загрузке.
---
---   2) Стартовый проход по Workspace:GetDescendants() больше
---      НЕ обрабатывает объекты в блокирующем цикле пачками
---      по 300 (task.wait() каждые 300). Вместо этого он
---      просто СКЛАДЫВАЕТ все найденные объекты в ту же
---      тайм-бюджетную очередь (~1.5ms/кадр), что и новые
---      застриммленные объекты. Вся тяжёлая работа (pcall,
---      выставление свойств) размазывается по кадрам ровно
---      и одинаково, что при первой загрузке, что при
---      обычном стриминге на бегу.
---
---   Всё, что было в v6 (фикс микрофризов от DescendantAdded,
---   меньше pcall на объект) — сохранено без изменений.
---   Логика удаления материалов/MaterialService и т.д. —
---   НЕ ТРОГАЛАСЬ.
---========================================================
-
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 local MaterialService = game:GetService("MaterialService")
 local RunService = game:GetService("RunService")
 local UserSettings = game:GetService("UserSettings")
-
-
-
-
---========================================================
--- ARCIZZ0 BOOSTER INTRO GUI
--- ZERO LOOP / ZERO HEARTBEAT / ZERO RENDERSTEPPED
---========================================================
-
 local TweenService = game:GetService("TweenService")
 
 local function CreateBoosterGui()
-
-	-- Не создавать второй раз
 	local playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
 	if not playerGui then
 		return
@@ -72,10 +16,6 @@ local function CreateBoosterGui()
 		return
 	end
 
-	--====================================================
-	-- SCREEN GUI
-	--====================================================
-
 	local screenGui = Instance.new("ScreenGui")
 	screenGui.Name = "Arcizz0Booster"
 	screenGui.ResetOnSpawn = false
@@ -84,37 +24,19 @@ local function CreateBoosterGui()
 	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	screenGui.Parent = playerGui
 
-	--====================================================
-	-- MAIN FRAME
-	--====================================================
-
 	local frame = Instance.new("Frame")
 	frame.Name = "BoosterFrame"
-
 	frame.AnchorPoint = Vector2.new(0.5, 0)
-
-	-- Начинает полностью выше экрана
 	frame.Position = UDim2.new(0.5, 0, 0, -95)
-
 	frame.Size = UDim2.new(0, 390, 0, 70)
-
 	frame.BackgroundColor3 = Color3.fromRGB(12, 2, 2)
 	frame.BorderSizePixel = 0
-
 	frame.ZIndex = 10
 	frame.Parent = screenGui
-
-	--====================================================
-	-- CORNER
-	--====================================================
 
 	local corner = Instance.new("UICorner")
 	corner.CornerRadius = UDim.new(0, 13)
 	corner.Parent = frame
-
-	--====================================================
-	-- STROKE
-	--====================================================
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Thickness = 2
@@ -122,19 +44,12 @@ local function CreateBoosterGui()
 	stroke.Color = Color3.fromRGB(125, 0, 0)
 	stroke.Parent = frame
 
-	--====================================================
-	-- TOP RED LINE
-	--====================================================
-
 	local topLine = Instance.new("Frame")
 	topLine.Name = "TopLine"
-
 	topLine.Position = UDim2.new(0, 0, 0, 0)
 	topLine.Size = UDim2.new(1, 0, 0, 3)
-
 	topLine.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
 	topLine.BorderSizePixel = 0
-
 	topLine.ZIndex = 11
 	topLine.Parent = frame
 
@@ -142,39 +57,23 @@ local function CreateBoosterGui()
 	topCorner.CornerRadius = UDim.new(0, 3)
 	topCorner.Parent = topLine
 
-	--====================================================
-	-- TITLE
-	--====================================================
-
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
-
 	title.AnchorPoint = Vector2.new(0.5, 0.5)
 	title.Position = UDim2.new(0.5, 0, 0.5, 0)
-
 	title.Size = UDim2.new(1, -30, 1, -10)
-
 	title.BackgroundTransparency = 1
-
 	title.Text = "Arcizz0 Booster"
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 27
-
 	title.TextXAlignment = Enum.TextXAlignment.Center
 	title.TextYAlignment = Enum.TextYAlignment.Center
-
 	title.TextColor3 = Color3.fromRGB(255, 0, 0)
-
 	title.ZIndex = 12
 	title.Parent = frame
 
-	--====================================================
-	-- TEXT GRADIENT
-	--====================================================
-
 	local gradient = Instance.new("UIGradient")
 	gradient.Name = "RedGradient"
-
 	gradient.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, Color3.fromRGB(70, 0, 0)),
 		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 25, 25)),
@@ -182,13 +81,8 @@ local function CreateBoosterGui()
 		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(255, 0, 0)),
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(65, 0, 0)),
 	})
-
 	gradient.Offset = Vector2.new(-1, 0)
 	gradient.Parent = title
-
-	--====================================================
-	-- OPEN TWEEN
-	--====================================================
 
 	local openTween = TweenService:Create(
 		frame,
@@ -201,13 +95,6 @@ local function CreateBoosterGui()
 			Position = UDim2.new(0.5, 0, 0, 18)
 		}
 	)
-
-	--====================================================
-	-- TEXT SHINE TWEENS
-	--
-	-- Без RenderStepped.
-	-- TweenService работает на стороне Roblox.
-	--====================================================
 
 	local shine1 = TweenService:Create(
 		gradient,
@@ -245,10 +132,6 @@ local function CreateBoosterGui()
 		}
 	)
 
-	--====================================================
-	-- CLOSE TWEEN
-	--====================================================
-
 	local closeTween = TweenService:Create(
 		frame,
 		TweenInfo.new(
@@ -261,10 +144,6 @@ local function CreateBoosterGui()
 		}
 	)
 
-	--====================================================
-	-- SHOW
-	--====================================================
-
 	openTween:Play()
 	shine1:Play()
 
@@ -276,65 +155,33 @@ local function CreateBoosterGui()
 		shine3:Play()
 	end)
 
-	--====================================================
-	-- WAIT 3 SECONDS
-	--====================================================
-
 	task.delay(3, function()
-
-		-- Если GUI уже удалили
 		if not screenGui.Parent then
 			return
 		end
 
-		-- Останавливаем возможное переливание
 		shine1:Cancel()
 		shine2:Cancel()
 		shine3:Cancel()
 
-		-- Уезжаем наверх
 		closeTween:Play()
 
 		closeTween.Completed:Connect(function()
-
 			if screenGui then
 				screenGui:Destroy()
 			end
-
 		end)
-
 	end)
 end
 
---========================================================
--- FIRST EXECUTION
---========================================================
-
 task.defer(CreateBoosterGui)
 
---========================================================
--- CONFIG
---========================================================
-
--- Тайм-бюджет на обработку объектов за один кадр — как для
--- новых застриммленных объектов, так и для стартового
--- сканирования карты. Именно это убирает и микрофризы при
--- повороте камеры, и просадку FPS при загрузке карты —
--- работа всегда размазана по кадрам, а не идёт пачкой.
-local FRAME_BUDGET_SECONDS = 0.0015 -- ~1.5ms
-local MAX_PER_FRAME_HARD_CAP = 200  -- защита на случай очень быстрых clock() тиков
-
---========================================================
--- SAFE
---========================================================
+local FRAME_BUDGET_SECONDS = 0.0015
+local MAX_PER_FRAME_HARD_CAP = 200
 
 local function safe(fn)
 	pcall(fn)
 end
-
---========================================================
--- GRAPHICS QUALITY
---========================================================
 
 safe(function()
 	local settingsObject =
@@ -346,10 +193,6 @@ end)
 safe(function()
 	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
 end)
-
---========================================================
--- LIGHTING
---========================================================
 
 safe(function()
 	Lighting.GlobalShadows = false
@@ -375,7 +218,6 @@ safe(function()
 	Lighting.Technology = Enum.Technology.Compatibility
 end)
 
--- Убираем уже существующие post effects.
 for _, obj in ipairs(Lighting:GetChildren()) do
 	if obj:IsA("PostEffect") then
 		safe(function()
@@ -384,37 +226,21 @@ for _, obj in ipairs(Lighting:GetChildren()) do
 	end
 end
 
---========================================================
--- MATERIALSERVICE
---
--- MaterialVariant может содержать ColorMap,
--- NormalMap, RoughnessMap, MetalnessMap и т.д.
---========================================================
-
 for _, obj in ipairs(MaterialService:GetChildren()) do
 	if obj:IsA("MaterialVariant") then
-
 		safe(function()
 			obj:Destroy()
 		end)
-
 	elseif obj:IsA("TerrainDetail") then
-
 		safe(function()
 			obj:Destroy()
 		end)
-
 	end
 end
-
---========================================================
--- TERRAIN
---========================================================
 
 local terrain = Workspace:FindFirstChildOfClass("Terrain")
 
 if terrain then
-
 	safe(function()
 		terrain.WaterWaveSize = 0
 	end)
@@ -430,17 +256,10 @@ if terrain then
 	safe(function()
 		terrain.WaterTransparency = 1
 	end)
-
 end
 
---========================================================
--- ANIMATION
---========================================================
-
 local function disableAnimationObject(obj)
-
 	if obj:IsA("AnimationController") then
-
 		safe(function()
 			obj:Destroy()
 		end)
@@ -449,9 +268,7 @@ local function disableAnimationObject(obj)
 	end
 
 	if obj:IsA("Animator") then
-
 		pcall(function()
-
 			for _, track in ipairs(obj:GetPlayingAnimationTracks()) do
 				pcall(function()
 					track:Stop(0)
@@ -465,27 +282,18 @@ local function disableAnimationObject(obj)
 	end
 
 	if obj:IsA("Animation") then
-
 		safe(function()
 			obj.AnimationId = "rbxassetid://0"
 		end)
-
 	end
 end
 
---========================================================
--- CHARACTER CLEANUP
---========================================================
-
 local function cleanupCharacter(character)
-
 	if not character or not character.Parent then
 		return
 	end
 
-	-- Одежда / аксессуары
 	for _, child in ipairs(character:GetChildren()) do
-
 		if child:IsA("Accessory")
 			or child:IsA("Shirt")
 			or child:IsA("Pants")
@@ -494,51 +302,31 @@ local function cleanupCharacter(character)
 			safe(function()
 				child:Destroy()
 			end)
-
 		end
 	end
 
-	-- Animate
 	local animate = character:FindFirstChild("Animate")
 
 	if animate then
-
 		safe(function()
 			animate:Destroy()
 		end)
-
 	end
 
-	-- Анимационные объекты
 	for _, obj in ipairs(character:GetDescendants()) do
-
 		if obj:IsA("AnimationController")
 			or obj:IsA("Animator")
 			or obj:IsA("Animation") then
 
 			disableAnimationObject(obj)
-
 		end
 	end
 end
 
---========================================================
--- OBJECT OPTIMIZATION
---
--- На каждый тип объекта один pcall со всеми свойствами
--- внутри (вместо 5-8 отдельных pcall на каждое свойство) —
--- меньше замыканий/мусора при массовой обработке.
---========================================================
-
 local function optimizeObject(obj)
-
 	if not obj or not obj.Parent then
 		return
 	end
-
-	--====================================================
-	-- ANIMATION
-	--====================================================
 
 	if obj:IsA("AnimationController")
 		or obj:IsA("Animator")
@@ -548,12 +336,7 @@ local function optimizeObject(obj)
 		return
 	end
 
-	--====================================================
-	-- SURFACE APPEARANCE
-	--====================================================
-
 	if obj:IsA("SurfaceAppearance") then
-
 		pcall(function()
 			obj:Destroy()
 		end)
@@ -561,45 +344,24 @@ local function optimizeObject(obj)
 		return
 	end
 
-	--====================================================
-	-- MESHPART
-	--====================================================
-
 	if obj:IsA("MeshPart") then
-
 		pcall(function()
-
-			-- Убираем legacy texture.
 			obj.TextureID = ""
-
-			-- Убираем MaterialVariant.
 			obj.MaterialVariant = ""
-
-			-- Самый дешёвый render fidelity.
 			obj.RenderFidelity = Enum.RenderFidelity.Performance
 
-			-- SmoothPlastic.
-			-- Neon специально оставляем.
 			if obj.Material ~= Enum.Material.Neon then
 				obj.Material = Enum.Material.SmoothPlastic
 			end
 
-			-- Тени.
 			obj.CastShadow = false
-
-			-- Reflectance.
 			obj.Reflectance = 0
 		end)
 
 		return
 	end
 
-	--====================================================
-	-- SPECIALMESH
-	--====================================================
-
 	if obj:IsA("SpecialMesh") then
-
 		pcall(function()
 			obj.TextureId = ""
 		end)
@@ -607,62 +369,36 @@ local function optimizeObject(obj)
 		return
 	end
 
-	--====================================================
-	-- BASEPART
-	--====================================================
-
 	if obj:IsA("BasePart") then
-
 		pcall(function()
-
-			-- MaterialVariant выключаем.
 			obj.MaterialVariant = ""
 
-			-- Всё -> SmoothPlastic,
-			-- кроме Neon.
 			if obj.Material ~= Enum.Material.Neon then
 				obj.Material = Enum.Material.SmoothPlastic
 			end
 
-			-- Тени.
 			obj.CastShadow = false
-
-			-- Отражения.
 			obj.Reflectance = 0
 		end)
 
 		return
 	end
 
-	--====================================================
-	-- DECAL
-	--====================================================
-
 	if obj:IsA("Decal") then
-
 		pcall(function()
 			obj.Transparency = 1
 		end)
 
 		return
 	end
-
-	--====================================================
-	-- TEXTURE
-	--====================================================
 
 	if obj:IsA("Texture") then
-
 		pcall(function()
 			obj.Transparency = 1
 		end)
 
 		return
 	end
-
-	--====================================================
-	-- PARTICLES
-	--====================================================
 
 	if obj:IsA("ParticleEmitter")
 		or obj:IsA("Smoke")
@@ -676,35 +412,21 @@ local function optimizeObject(obj)
 		return
 	end
 
-	--====================================================
-	-- TRAIL
-	--====================================================
-
 	if obj:IsA("Trail") then
-
 		pcall(function()
 			obj.Enabled = false
 		end)
 
 		return
 	end
-
-	--====================================================
-	-- BEAM
-	--====================================================
 
 	if obj:IsA("Beam") then
-
 		pcall(function()
 			obj.Enabled = false
 		end)
 
 		return
 	end
-
-	--====================================================
-	-- LIGHT
-	--====================================================
 
 	if obj:IsA("PointLight")
 		or obj:IsA("SpotLight")
@@ -717,12 +439,7 @@ local function optimizeObject(obj)
 		return
 	end
 
-	--====================================================
-	-- VIDEO
-	--====================================================
-
 	if obj:IsA("VideoFrame") then
-
 		pcall(function()
 			obj.Playing = false
 			obj.Visible = false
@@ -730,26 +447,13 @@ local function optimizeObject(obj)
 
 		return
 	end
-
 end
-
---========================================================
--- SHARED THROTTLED QUEUE
---
--- Единая очередь + один Heartbeat с тайм-бюджетом.
--- Используется И для стартового сканирования карты, И для
--- новых объектов, которые появляются позже (стриминг на
--- бегу / повороте камеры). Работа всегда размазана по
--- кадрам ровными порциями — не важно, грузится ли карта
--- впервые или ты просто бежишь дальше.
---========================================================
 
 local pendingQueue = {}
 local pendingSet = {}
 local queueHead = 1
 
 local function enqueueObject(obj)
-
 	if pendingSet[obj] then
 		return
 	end
@@ -759,7 +463,6 @@ local function enqueueObject(obj)
 end
 
 RunService.Heartbeat:Connect(function()
-
 	if queueHead > #pendingQueue then
 		return
 	end
@@ -768,7 +471,6 @@ RunService.Heartbeat:Connect(function()
 	local processedThisFrame = 0
 
 	while queueHead <= #pendingQueue do
-
 		local obj = pendingQueue[queueHead]
 		queueHead += 1
 
@@ -791,10 +493,7 @@ RunService.Heartbeat:Connect(function()
 		end
 	end
 
-	-- Периодическая компакция очереди, чтобы таблица
-	-- не росла бесконечно при долгой сессии.
 	if queueHead > 2000 then
-
 		local newQueue = table.create(#pendingQueue - queueHead + 1)
 
 		for i = queueHead, #pendingQueue do
@@ -806,18 +505,7 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
---========================================================
--- STARTUP WORLD
---
--- Ждём, пока карта реально загрузится (game:IsLoaded()),
--- чтобы не соревноваться с движком за кадр во время самой
--- загрузки. После этого просто СКЛАДЫВАЕМ все найденные
--- объекты в общую очередь — обработка пойдёт тем же
--- плавным тайм-бюджетным механизмом, что и всё остальное.
---========================================================
-
 task.spawn(function()
-
 	if not game:IsLoaded() then
 		game.Loaded:Wait()
 	end
@@ -828,45 +516,23 @@ task.spawn(function()
 		enqueueObject(objects[i])
 	end
 
-	--====================================================
-	-- EXISTING CHARACTERS / NPC / BRAINROTS
-	--
-	-- Это отдельная разовая операция (не зависит от
-	-- разгрузки очереди выше), поэтому запускаем сразу.
-	--====================================================
-
 	for _, obj in ipairs(objects) do
-
 		if obj:IsA("Model") then
-
 			if obj:FindFirstChildOfClass("Humanoid")
 				or obj:FindFirstChildOfClass("AnimationController", true)
 				or obj:FindFirstChildOfClass("Animator", true) then
 
 				cleanupCharacter(obj)
-
 			end
 		end
 	end
-
-	print("============================================")
-	print(" ULTRA FPS BOOST EXTREME v7")
-	print(" INITIAL SCAN QUEUED, DRAINING SMOOTHLY")
-	print("============================================")
-
 end)
 
---========================================================
--- FUTURE OBJECTS (STREAMING-SAFE)
---========================================================
-
 Workspace.DescendantAdded:Connect(function(obj)
-
 	if not obj then
 		return
 	end
 
-	-- Самые важные новые визуальные объекты.
 	if obj:IsA("MeshPart")
 		or obj:IsA("SpecialMesh")
 		or obj:IsA("SurfaceAppearance")
@@ -888,40 +554,24 @@ Workspace.DescendantAdded:Connect(function(obj)
 		or obj:IsA("VideoFrame") then
 
 		enqueueObject(obj)
-
 	end
 end)
 
---========================================================
--- PLAYER SPAWN
---
--- Только при появлении нового персонажа.
---========================================================
-
 local function setupPlayer(player)
-
 	if player.Character then
-
 		task.defer(function()
-
 			if player.Character then
 				cleanupCharacter(player.Character)
 			end
-
 		end)
-
 	end
 
 	player.CharacterAdded:Connect(function(character)
-
 		task.defer(function()
-
 			if character and character.Parent then
 				cleanupCharacter(character)
 			end
-
 		end)
-
 	end)
 end
 
@@ -930,29 +580,4 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 Players.PlayerAdded:Connect(setupPlayer)
-
---========================================================
--- FINAL
---========================================================
-
-print("============================================")
-print(" MAX FPS MODE (v7, NO LOAD-TIME FPS DROP)")
-print("============================================")
-print("Material         : SMOOTHPLASTIC")
-print("Neon             : ALLOWED")
-print("MaterialVariant  : OFF")
-print("MaterialService  : CLEAN")
-print("Mesh Texture     : OFF")
-print("SpecialMesh      : OFF")
-print("SurfaceAppearance: OFF")
-print("Decal            : OFF")
-print("Texture          : OFF")
-print("Shadows          : OFF")
-print("Particles        : OFF")
-print("Lights           : OFF")
-print("Animations       : OFF")
-print("Animator         : OFF")
-print("AnimationControl : OFF")
-print("Queue mode       : SHARED, BUDGETED (~1.5ms/frame)")
-print("Waits map load   : YES (game:IsLoaded)")
-print("============================================")
+```
