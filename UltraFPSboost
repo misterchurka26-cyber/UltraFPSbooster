@@ -196,12 +196,6 @@ end)
 
 safe(function()
 	Lighting.GlobalShadows = false
-
-	Lighting:GetPropertyChangedSignal("GlobalShadows"):Connect(function()
-		if Lighting.GlobalShadows then
-			Lighting.GlobalShadows = false
-		end
-	end)
 end)
 
 safe(function()
@@ -459,7 +453,6 @@ end
 local pendingQueue = {}
 local pendingSet = {}
 local queueHead = 1
-local processingConnection
 
 local function enqueueObject(obj)
 	if pendingSet[obj] then
@@ -470,13 +463,8 @@ local function enqueueObject(obj)
 	pendingQueue[#pendingQueue + 1] = obj
 end
 
-local function processQueue()
+RunService.Heartbeat:Connect(function()
 	if queueHead > #pendingQueue then
-		if processingConnection then
-			processingConnection:Disconnect()
-			processingConnection = nil
-		end
-
 		return
 	end
 
@@ -516,7 +504,7 @@ local function processQueue()
 		pendingQueue = newQueue
 		queueHead = 1
 	end
-end
+end)
 
 task.spawn(function()
 	if not game:IsLoaded() then
@@ -539,8 +527,6 @@ task.spawn(function()
 			end
 		end
 	end
-
-	processingConnection = RunService.Heartbeat:Connect(processQueue)
 end)
 
 Workspace.DescendantAdded:Connect(function(obj)
@@ -549,7 +535,6 @@ Workspace.DescendantAdded:Connect(function(obj)
 	end
 
 	if obj:IsA("MeshPart")
-		or obj:IsA("BasePart")
 		or obj:IsA("SpecialMesh")
 		or obj:IsA("SurfaceAppearance")
 		or obj:IsA("Decal")
@@ -570,10 +555,6 @@ Workspace.DescendantAdded:Connect(function(obj)
 		or obj:IsA("VideoFrame") then
 
 		enqueueObject(obj)
-
-		if not processingConnection then
-			processingConnection = RunService.Heartbeat:Connect(processQueue)
-		end
 	end
 end)
 
@@ -600,3 +581,4 @@ for _, player in ipairs(Players:GetPlayers()) do
 end
 
 Players.PlayerAdded:Connect(setupPlayer)
+```
