@@ -433,7 +433,6 @@ local function optimizeObject(obj)
 		or obj:IsA("SurfaceLight") then
 
 		pcall(function()
-			obj.Shadows = false
 			obj.Enabled = false
 		end)
 
