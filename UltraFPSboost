@@ -1,13 +1,21 @@
 --========================================================
--- ULTRA FPS BOOST EXTREME v3
--- STARTUP ONLY / ZERO PERIODIC SCANS
+-- ULTRA FPS BOOST EXTREME v4
+-- HARD MODE / EVENT ONLY
 --
--- ЦЕЛЬ:
---   Максимальный FPS без постоянной нагрузки от оптимизатора.
+-- НЕТ:
+--   ❌ Heartbeat
+--   ❌ RenderStepped
+--   ❌ while true
+--   ❌ каждых 0.5 сек скан
+--   ❌ каждых 5 сек скан
+--   ❌ game:GetDescendants() в цикле
 --
--- ОСНОВНАЯ ИДЕЯ:
---   Оптимизация происходит при загрузке / появлении персонажа.
---   После этого НИКАКИХ Heartbeat / while / регулярных сканов.
+-- ЕСТЬ:
+--   ✅ Одна стартовая оптимизация
+--   ✅ ОДНО лёгкое событие Workspace.DescendantAdded
+--   ✅ Реакция только на нужные типы
+--   ✅ Удаление новых Animator / AnimationController
+--   ✅ Удаление новых текстур MeshPart / SpecialMesh
 --========================================================
 
 local Workspace = game:GetService("Workspace")
@@ -40,19 +48,21 @@ local CONFIG = {
 	DisableVideo = true,
 
 	--====================================================
-	-- ANIMATIONS
+	-- ANIMATION
 	--====================================================
 
 	DisableAnimations = true,
 
-	-- Делает AnimationId нулевым при первоначальной обработке.
+	-- Ставить AnimationId в 0
 	SetAnimationIdsToZero = true,
 
-	-- TRUE = удаляем Animator из модели после остановки.
-	-- Это самый агрессивный вариант.
+	-- Удалять Animator
 	DisableAnimator = true,
 
-	-- Удалять Animate LocalScript из персонажей.
+	-- Удалять AnimationController
+	DisableAnimationController = true,
+
+	-- Удалять Animate LocalScript у игроков
 	DisableAnimateScript = true,
 
 	--====================================================
@@ -63,6 +73,9 @@ local CONFIG = {
 	RemoveClothing = true,
 	RemoveCharacterMeshes = false,
 
+	-- Включено только для уже существующих персонажей.
+	-- Новые части специально не перекрашиваются глобальным
+	-- проходом, чтобы не создавать CPU-spikes.
 	SingleCharacterColor = true,
 
 	--====================================================
@@ -88,7 +101,6 @@ local CONFIG = {
 	-- GUI
 	--====================================================
 
-	-- GUI не сканируется глобально.
 	PixelateGuiImages = false,
 	RemoveGuiImages = false,
 
@@ -99,15 +111,11 @@ local CONFIG = {
 	Material = Enum.Material.Plastic,
 
 	--====================================================
-	-- BATCH
+	-- STARTUP
 	--====================================================
 
-	-- Сколько объектов обрабатывать перед маленьким yield.
-	-- Это влияет ТОЛЬКО на старт загрузки.
-	ObjectsPerBatch = 150,
-
-	-- Сколько частей персонажа менять за один batch.
-	CharacterPartsPerBatch = 100,
+	ObjectsPerBatch = 200,
+	CharacterPartsPerBatch = 150,
 }
 
 --========================================================
@@ -120,7 +128,6 @@ end
 
 --========================================================
 -- GRAPHICS QUALITY
--- Выполняется ОДИН РАЗ.
 --========================================================
 
 safe(function()
@@ -162,7 +169,6 @@ local function optimizeLighting()
 		Lighting.Technology = Enum.Technology.Compatibility
 	end)
 
-	-- Отключаем уже существующие эффекты.
 	if CONFIG.DisablePostEffects then
 
 		for _, obj in ipairs(Lighting:GetChildren()) do
@@ -239,19 +245,12 @@ local function isCharacter(model)
 		return false
 	end
 
-	if model:FindFirstChildOfClass("Humanoid") then
-		return true
-	end
-
-	if model:FindFirstChildOfClass("Animator", true) then
-		return true
-	end
-
-	return false
+	return model:FindFirstChildOfClass("Humanoid") ~= nil
+		or model:FindFirstChildOfClass("Animator", true) ~= nil
 end
 
 --========================================================
--- GET CHARACTER COLOR
+-- CHARACTER COLOR
 --========================================================
 
 local function getCharacterColor(character)
@@ -281,77 +280,74 @@ local function getCharacterColor(character)
 end
 
 --========================================================
--- STOP ANIMATIONS ONCE
+-- REMOVE ANIMATION SYSTEM
 --========================================================
 
-local function disableAnimations(character)
+local function disableAnimationObject(obj)
 
 	if not CONFIG.DisableAnimations then
 		return
 	end
 
 	--====================================================
-	-- Disable Animate script
+	-- ANIMATION CONTROLLER
 	--====================================================
 
-	if CONFIG.DisableAnimateScript then
+	if CONFIG.DisableAnimationController
+		and obj:IsA("AnimationController") then
 
-		local animate =
-			character:FindFirstChild("Animate")
+		safe(function()
+			obj:Destroy()
+		end)
 
-		if animate and animate:IsA("LocalScript") then
-
-			safe(function()
-				animate:Destroy()
-			end)
-
-		end
+		return
 	end
 
 	--====================================================
-	-- Process Animator + Animation
+	-- ANIMATOR
 	--====================================================
 
-	local descendants = character:GetDescendants()
+	if obj:IsA("Animator") then
 
-	for i = 1, #descendants do
+		-- Сначала пытаемся остановить уже играющие tracks.
+		safe(function()
 
-		local obj = descendants[i]
+			for _, track in ipairs(obj:GetPlayingAnimationTracks()) do
 
-		if obj:IsA("Animator") then
+				pcall(function()
+					track:Stop(0)
+				end)
+
+			end
+
+		end)
+
+		-- Затем удаляем Animator.
+		if CONFIG.DisableAnimator then
 
 			safe(function()
-
-				local tracks = obj:GetPlayingAnimationTracks()
-
-				for _, track in ipairs(tracks) do
-
-					pcall(function()
-						track:Stop(0)
-					end)
-
-				end
+				obj:Destroy()
 			end)
 
-			-- Полностью убираем Animator.
-			if CONFIG.DisableAnimator then
-
-				safe(function()
-					obj.Parent = nil
-				end)
-
-			end
-
-		elseif obj:IsA("Animation") then
-
-			if CONFIG.SetAnimationIdsToZero then
-
-				safe(function()
-					obj.AnimationId = "rbxassetid://0"
-				end)
-
-			end
 		end
+
+		return
+	end
+
+	--====================================================
+	-- ANIMATION
+	--====================================================
+
+	if obj:IsA("Animation") then
+
+		if CONFIG.SetAnimationIdsToZero then
+
+			safe(function()
+				obj.AnimationId = "rbxassetid://0"
+			end)
+
+		end
+
 	end
 end
 
@@ -363,7 +359,6 @@ local function removeCharacterVisuals(character)
 
 	for _, obj in ipairs(character:GetChildren()) do
 
-		-- ACCESSORIES
 		if CONFIG.RemoveAccessories
 			and obj:IsA("Accessory") then
 
@@ -371,7 +366,6 @@ local function removeCharacterVisuals(character)
 				obj:Destroy()
 			end)
 
-		-- CLOTHING
 		elseif CONFIG.RemoveClothing
 			and (
 				obj:IsA("Shirt")
@@ -383,7 +377,6 @@ local function removeCharacterVisuals(character)
 				obj:Destroy()
 			end)
 
-		-- CHARACTER MESH
 		elseif CONFIG.RemoveCharacterMeshes
 			and obj:IsA("CharacterMesh") then
 
@@ -391,7 +384,6 @@ local function removeCharacterVisuals(character)
 				obj:Destroy()
 			end)
 
-		-- TOOLS
 		elseif CONFIG.RemoveTools
 			and obj:IsA("Tool") then
 
@@ -422,9 +414,9 @@ local function optimizeCharacterColor(character)
 		if obj:IsA("BasePart") then
 			table.insert(parts, obj)
 		end
+
 	end
 
-	-- Обрабатываем частями, чтобы старт не зависал.
 	for i = 1, #parts do
 
 		safe(function()
@@ -434,9 +426,9 @@ local function optimizeCharacterColor(character)
 		if i % CONFIG.CharacterPartsPerBatch == 0 then
 			task.wait()
 		end
+
 	end
 
-	-- BodyColors
 	local bodyColors = character:FindFirstChildOfClass("BodyColors")
 
 	if bodyColors then
@@ -466,11 +458,12 @@ local function optimizeCharacterColor(character)
 		safe(function()
 			bodyColors.RightLegColor = brick
 		end)
+
 	end
 end
 
 --========================================================
--- CHARACTER OPTIMIZATION
+-- EXISTING CHARACTER
 --========================================================
 
 local function optimizeCharacter(character)
@@ -487,33 +480,68 @@ local function optimizeCharacter(character)
 		return
 	end
 
-	--====================================================
-	-- VISUALS
-	--====================================================
-
+	-- Одежда / аксессуары
 	removeCharacterVisuals(character)
 
-	--====================================================
-	-- ANIMATIONS
-	--====================================================
+	-- Анимации
+	if CONFIG.DisableAnimations then
 
-	disableAnimations(character)
+		if CONFIG.DisableAnimateScript then
 
-	--====================================================
-	-- COLOR
-	--====================================================
+			local animate = character:FindFirstChild("Animate")
 
+			if animate and animate:IsA("LocalScript") then
+
+				safe(function()
+					animate:Destroy()
+				end)
+
+			end
+		end
+
+		for _, obj in ipairs(character:GetDescendants()) do
+
+			if obj:IsA("Animator")
+				or obj:IsA("Animation")
+				or obj:IsA("AnimationController") then
+
+				disableAnimationObject(obj)
+
+			end
+		end
+	end
+
+	-- Цвет
 	optimizeCharacterColor(character)
 end
 
 --========================================================
--- OBJECT OPTIMIZATION
+-- OBJECT OPTIMIZER
+--
+-- Эта функция вызывается:
+-- 1. Во время стартовой обработки
+-- 2. Только для конкретного нового объекта
 --========================================================
 
 local function optimizeObject(obj)
 
 	if not obj or not obj.Parent then
 		return
+	end
+
+	--====================================================
+	-- ANIMATION
+	--====================================================
+
+	if obj:IsA("Animation")
+		or obj:IsA("Animator")
+		or obj:IsA("AnimationController") then
+
+		disableAnimationObject(obj)
+
+		if not obj.Parent then
+			return
+		end
 	end
 
 	--====================================================
@@ -548,7 +576,7 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- MESHPART
+	-- MESHPART TEXTURE
 	--====================================================
 
 	if obj:IsA("MeshPart") then
@@ -567,19 +595,47 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- TEXTURES
+	-- SPECIALMESH / FILEMESH
+	--
+	-- Именно здесь часто находятся текстуры крыльев,
+	-- хвостов, волос, аксессуаров и т.п.
 	--====================================================
 
 	if CONFIG.RemoveTextures then
 
-		if obj:IsA("Decal")
-			or obj:IsA("Texture") then
+		if obj:IsA("SpecialMesh") then
 
 			safe(function()
-				obj.Transparency = 1
+				obj.TextureId = ""
 			end)
 
 		end
+	end
+
+	--====================================================
+	-- DECAL
+	--====================================================
+
+	if CONFIG.RemoveTextures
+		and obj:IsA("Decal") then
+
+		safe(function()
+			obj.Transparency = 1
+		end)
+
+	end
+
+	--====================================================
+	-- TEXTURE
+	--====================================================
+
+	if CONFIG.RemoveTextures
+		and obj:IsA("Texture") then
+
+		safe(function()
+			obj.Transparency = 1
+		end)
+
 	end
 
 	--====================================================
@@ -615,7 +671,7 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- TRAILS
+	-- TRAIL
 	--====================================================
 
 	if CONFIG.DisableTrails
@@ -628,7 +684,7 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- BEAMS
+	-- BEAM
 	--====================================================
 
 	if CONFIG.DisableBeams
@@ -641,7 +697,7 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- LIGHTS
+	-- LIGHT
 	--====================================================
 
 	if CONFIG.DisableLights then
@@ -658,7 +714,7 @@ local function optimizeObject(obj)
 	end
 
 	--====================================================
-	-- POST EFFECTS
+	-- POST EFFECT
 	--====================================================
 
 	if CONFIG.DisablePostEffects then
@@ -692,17 +748,30 @@ local function optimizeObject(obj)
 		end)
 
 	end
+
+	--====================================================
+	-- GUI
+	--====================================================
+
+	if CONFIG.PixelateGuiImages then
+
+		if obj:IsA("ImageLabel")
+			or obj:IsA("ImageButton") then
+
+			safe(function()
+				obj.ResampleMode = Enum.ResamplerMode.Pixelated
+			end)
+
+		end
+	end
+
 end
 
 --========================================================
--- STARTUP WORLD OPTIMIZATION
---
--- ВАЖНО:
--- Только Workspace.
--- Никакого game:GetDescendants().
+-- STARTUP WORLD
 --========================================================
 
-local function optimizeWorkspace()
+task.spawn(function()
 
 	local objects = Workspace:GetDescendants()
 
@@ -712,12 +781,12 @@ local function optimizeWorkspace()
 
 		if obj and obj.Parent then
 
-			-- Если модель персонаж/NPC
-			if obj:IsA("Model")
-				and isCharacter(obj) then
+			-- Сразу убираем AnimationController/Animator.
+			if obj:IsA("AnimationController")
+				or obj:IsA("Animator")
+				or obj:IsA("Animation") then
 
-				-- Обрабатываем персонажа здесь.
-				optimizeCharacter(obj)
+				disableAnimationObject(obj)
 
 			else
 
@@ -726,38 +795,148 @@ local function optimizeWorkspace()
 			end
 		end
 
-		-- Маленький yield.
-		-- Это происходит только во время стартовой обработки.
 		if i % CONFIG.ObjectsPerBatch == 0 then
 			task.wait()
 		end
 	end
-end
 
---========================================================
--- INITIAL WORLD
---========================================================
+	--====================================================
+	-- Уже существующие Brainrots / NPC / Players
+	--====================================================
 
-task.spawn(function()
+	for _, obj in ipairs(Workspace:GetDescendants()) do
 
-	optimizeWorkspace()
+		if obj:IsA("Model") and isCharacter(obj) then
+
+			task.spawn(function()
+
+				if obj.Parent then
+					optimizeCharacter(obj)
+				end
+
+			end)
+
+		end
+	end
 
 	print("============================================")
-	print(" ULTRA FPS BOOST v3")
-	print(" STARTUP OPTIMIZATION FINISHED")
-	print(" NO HEARTBEAT")
-	print(" NO PERIODIC SCANS")
-	print(" NO AnimationPlayed HOOK")
-	print(" NO GLOBAL DescendantAdded")
+	print(" ULTRA FPS BOOST v4")
+	print(" INITIAL OPTIMIZATION FINISHED")
 	print("============================================")
+
+end)
+
+--========================================================
+-- FUTURE OBJECTS
+--
+-- ВАЖНО:
+-- Это не цикл.
+-- Это одно событие.
+--
+-- Мы НЕ проверяем всю игру.
+-- Получаем только конкретно созданный объект.
+--========================================================
+
+Workspace.DescendantAdded:Connect(function(obj)
+
+	if not obj then
+		return
+	end
+
+	--====================================================
+	-- ANIMATION SYSTEM
+	--====================================================
+
+	if obj:IsA("AnimationController")
+		or obj:IsA("Animator")
+		or obj:IsA("Animation") then
+
+		-- Никаких task.wait.
+		-- Никаких сканов.
+		disableAnimationObject(obj)
+
+		return
+	end
+
+	--====================================================
+	-- VISUAL OBJECTS
+	--====================================================
+
+	if obj:IsA("MeshPart")
+		or obj:IsA("SpecialMesh")
+		or obj:IsA("SurfaceAppearance")
+		or obj:IsA("Decal")
+		or obj:IsA("Texture")
+		or obj:IsA("ParticleEmitter")
+		or obj:IsA("Smoke")
+		or obj:IsA("Fire")
+		or obj:IsA("Sparkles")
+		or obj:IsA("Trail")
+		or obj:IsA("Beam")
+		or obj:IsA("PointLight")
+		or obj:IsA("SpotLight")
+		or obj:IsA("SurfaceLight")
+		or obj:IsA("VideoFrame")
+		or obj:IsA("BasePart") then
+
+		-- Обрабатываем ТОЛЬКО этот объект.
+		optimizeObject(obj)
+
+		return
+	end
+
+	--====================================================
+	-- ACCESSORY
+	--====================================================
+
+	if CONFIG.RemoveAccessories
+		and obj:IsA("Accessory") then
+
+		safe(function()
+			obj:Destroy()
+		end)
+
+		return
+	end
+
+	--====================================================
+	-- CLOTHING
+	--====================================================
+
+	if CONFIG.RemoveClothing then
+
+		if obj:IsA("Shirt")
+			or obj:IsA("Pants")
+			or obj:IsA("ShirtGraphic") then
+
+			safe(function()
+				obj:Destroy()
+			end)
+
+			return
+		end
+	end
+
+	--====================================================
+	-- CHARACTER MESH
+	--====================================================
+
+	if CONFIG.RemoveCharacterMeshes
+		and obj:IsA("CharacterMesh") then
+
+		safe(function()
+			obj:Destroy()
+		end)
+
+		return
+	end
 
 end)
 
 --========================================================
 -- PLAYER CHARACTERS
 --
--- Это НЕ постоянная проверка.
--- Только один вызов при респавне.
+-- Только при респавне конкретного игрока.
 --========================================================
 
 local function setupPlayer(player)
@@ -770,7 +949,6 @@ local function setupPlayer(player)
 
 		task.spawn(function()
 
-			-- Даём загрузиться Character целиком.
 			task.wait()
 
 			if player.Character then
@@ -778,14 +956,12 @@ local function setupPlayer(player)
 			end
 
 		end)
-
 	end
 
 	player.CharacterAdded:Connect(function(character)
 
 		task.spawn(function()
 
-			-- Ждём появления основных частей.
 			task.wait()
 
 			if character and character.Parent then
@@ -804,37 +980,29 @@ end
 Players.PlayerAdded:Connect(setupPlayer)
 
 --========================================================
--- GUI
---
--- Никаких глобальных сканов GUI.
--- Это специально сделано ради FPS.
---========================================================
-
---========================================================
 -- END
 --========================================================
 
 print("============================================")
-print(" ULTRA FPS BOOST EXTREME v3")
+print(" ULTRA FPS BOOST EXTREME v4")
 print("============================================")
-print("Graphics Quality  : LEVEL 1")
-print("Textures          : OFF")
-print("SurfaceAppearance : OFF")
-print("Shadows           : OFF")
-print("Particles         : OFF")
-print("Trails            : OFF")
-print("Beams             : OFF")
-print("Lights            : OFF")
-print("Reflectance       : OFF")
-print("Materials         : PLASTIC")
-print("Post Effects      : OFF")
-print("Video             : OFF")
-print("Animations        : REMOVED")
-print("Animator          : REMOVED")
-print("Animate Script    : REMOVED")
-print("Accessories       : OFF")
-print("Clothing          : OFF")
-print("Character Color   : SINGLE")
-print("Periodic Scans    : NONE")
-print("Heartbeat Loop    : NONE")
+print("Quality          : LEVEL 1")
+print("Textures         : OFF")
+print("Mesh Textures    : OFF")
+print("SpecialMesh      : OFF")
+print("SurfaceAppearance: OFF")
+print("Shadows          : OFF")
+print("Particles        : OFF")
+print("Trails           : OFF")
+print("Beams            : OFF")
+print("Lights           : OFF")
+print("Materials        : PLASTIC")
+print("Animations       : OFF")
+print("Animator         : REMOVED")
+print("AnimationControl : REMOVED")
+print("Accessories      : OFF")
+print("Clothing         : OFF")
+print("Periodic Scan    : NONE")
+print("Heartbeat        : NONE")
+print("RenderStepped    : NONE")
 print("============================================")
