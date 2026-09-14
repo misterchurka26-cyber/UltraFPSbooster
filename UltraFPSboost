@@ -1,37 +1,55 @@
 --========================================================
--- ARCIZZ0 BOOSTER
--- ULTRA FPS v6
--- ZERO RUNTIME WORLD OPTIMIZATION
+-- ULTRA FPS BOOST EXTREME v6
+-- ZERO RUNTIME COST
+-- NO HEARTBEAT
+-- NO RENDERSTEPPED
+-- NO DESCENDANTADDED
+-- NO PERIODIC SCAN
 --
--- ЦЕЛЬ:
--- Максимальный FPS во время игры.
+-- ОПТИМИЗИРУЕТ УЖЕ ЗАГРУЖЕННЫЙ МИР ОДИН РАЗ.
 --
--- ПОСЛЕ СТАРТОВОЙ ОЧИСТКИ:
---   НЕМАЕТ:
---   ❌ Workspace.DescendantAdded
---   ❌ Heartbeat
---   ❌ RenderStepped
---   ❌ while loops
---   ❌ periodic scans
---   ❌ постоянный поиск объектов
+-- После завершения:
+--   CPU от этого скрипта практически 0
+--   Нет постоянного сканирования Workspace
+--   Нет обработки каждого нового streamed объекта
+--   Нет RenderStepped / Heartbeat
 --
--- Это важно для плавности камеры и движения.
+-- Основное:
+--   • Graphics Quality -> 1
+--   • Compatibility lighting
+--   • Global Shadows OFF
+--   • Environment lighting OFF
+--   • MaterialVariant OFF
+--   • Mesh texture OFF
+--   • SurfaceAppearance OFF
+--   • Decal / Texture OFF
+--   • Particles / Smoke / Fire / Sparkles OFF
+--   • Trails / Beams OFF
+--   • Lights OFF
+--   • Shadows OFF
+--   • Reflectance OFF
+--   • Mesh RenderFidelity = Performance
+--   • Character accessories/clothes OFF
+--   • Character animations OFF
+--
+-- ВАЖНО:
+-- После начального прохода НЕТ обработки новых объектов.
+-- Это специально сделано для устранения микрофризов
+-- при быстром движении / Streaming.
 --========================================================
 
-local Players = game:GetService("Players")
+
+--========================================================
+-- SERVICES
+--========================================================
+
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 local MaterialService = game:GetService("MaterialService")
 local UserSettings = game:GetService("UserSettings")
 local TweenService = game:GetService("TweenService")
 
-local LocalPlayer = Players.LocalPlayer
-
---========================================================
--- CONFIG
---========================================================
-
-local MAX_BATCH = 300
 
 --========================================================
 -- SAFE
@@ -41,198 +59,6 @@ local function safe(fn)
 	pcall(fn)
 end
 
---========================================================
--- ARCIZZ0 BOOSTER GUI
---========================================================
-
-local function CreateBoosterGui()
-
-	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-
-	if not playerGui then
-		playerGui = LocalPlayer:WaitForChild("PlayerGui")
-	end
-
-	if playerGui:FindFirstChild("Arcizz0Booster") then
-		return
-	end
-
-	--====================================================
-	-- GUI
-	--====================================================
-
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "Arcizz0Booster"
-	screenGui.ResetOnSpawn = false
-	screenGui.IgnoreGuiInset = true
-	screenGui.DisplayOrder = 999999
-	screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	screenGui.Parent = playerGui
-
-	--====================================================
-	-- FRAME
-	--====================================================
-
-	local frame = Instance.new("Frame")
-	frame.Name = "BoosterFrame"
-
-	frame.AnchorPoint = Vector2.new(0.5, 0)
-	frame.Position = UDim2.new(0.5, 0, 0, -95)
-	frame.Size = UDim2.new(0, 390, 0, 70)
-
-	frame.BackgroundColor3 = Color3.fromRGB(12, 2, 2)
-	frame.BorderSizePixel = 0
-
-	frame.ZIndex = 10
-	frame.Parent = screenGui
-
-	--====================================================
-	-- CORNER
-	--====================================================
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 13)
-	corner.Parent = frame
-
-	--====================================================
-	-- STROKE
-	--====================================================
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Thickness = 2
-	stroke.Transparency = 0.15
-	stroke.Color = Color3.fromRGB(125, 0, 0)
-	stroke.Parent = frame
-
-	--====================================================
-	-- TOP LINE
-	--====================================================
-
-	local topLine = Instance.new("Frame")
-	topLine.Size = UDim2.new(1, 0, 0, 3)
-	topLine.Position = UDim2.new(0, 0, 0, 0)
-
-	topLine.BackgroundColor3 = Color3.fromRGB(180, 0, 0)
-	topLine.BorderSizePixel = 0
-
-	topLine.ZIndex = 11
-	topLine.Parent = frame
-
-	--====================================================
-	-- TITLE
-	--====================================================
-
-	local title = Instance.new("TextLabel")
-	title.Name = "Title"
-
-	title.AnchorPoint = Vector2.new(0.5, 0.5)
-	title.Position = UDim2.new(0.5, 0, 0.5, 0)
-	title.Size = UDim2.new(1, -30, 1, -10)
-
-	title.BackgroundTransparency = 1
-
-	title.Text = "Arcizz0 Booster"
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 27
-
-	title.TextXAlignment = Enum.TextXAlignment.Center
-	title.TextYAlignment = Enum.TextYAlignment.Center
-
-	title.TextColor3 = Color3.fromRGB(255, 0, 0)
-
-	title.ZIndex = 12
-	title.Parent = frame
-
-	--====================================================
-	-- GRADIENT
-	--====================================================
-
-	local gradient = Instance.new("UIGradient")
-
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, Color3.fromRGB(55, 0, 0)),
-		ColorSequenceKeypoint.new(0.25, Color3.fromRGB(255, 30, 30)),
-		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 0, 0)),
-		ColorSequenceKeypoint.new(0.75, Color3.fromRGB(255, 0, 0)),
-		ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 0, 0)),
-	})
-
-	gradient.Offset = Vector2.new(-1, 0)
-	gradient.Parent = title
-
-	--====================================================
-	-- OPEN
-	--====================================================
-
-	local openTween = TweenService:Create(
-		frame,
-		TweenInfo.new(
-			0.65,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-		{
-			Position = UDim2.new(0.5, 0, 0, 18)
-		}
-	)
-
-	--====================================================
-	-- SHINE
-	--====================================================
-
-	local shineTween = TweenService:Create(
-		gradient,
-		TweenInfo.new(
-			1.1,
-			Enum.EasingStyle.Linear
-		),
-		{
-			Offset = Vector2.new(1, 0)
-		}
-	)
-
-	--====================================================
-	-- CLOSE
-	--====================================================
-
-	local closeTween = TweenService:Create(
-		frame,
-		TweenInfo.new(
-			0.5,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.In
-		),
-		{
-			Position = UDim2.new(0.5, 0, 0, -95)
-		}
-	)
-
-	openTween:Play()
-	shineTween:Play()
-
-	task.delay(3, function()
-
-		if not screenGui.Parent then
-			return
-		end
-
-		shineTween:Cancel()
-
-		closeTween:Play()
-
-		closeTween.Completed:Once(function()
-
-			if screenGui then
-				screenGui:Destroy()
-			end
-
-		end)
-
-	end)
-
-end
-
-task.defer(CreateBoosterGui)
 
 --========================================================
 -- GRAPHICS QUALITY
@@ -247,9 +73,14 @@ safe(function()
 
 end)
 
+
 safe(function()
-	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+
+	settings().Rendering.QualityLevel =
+		Enum.QualityLevel.Level01
+
 end)
+
 
 --========================================================
 -- LIGHTING
@@ -279,6 +110,7 @@ safe(function()
 	Lighting.Technology = Enum.Technology.Compatibility
 end)
 
+
 --========================================================
 -- POST EFFECTS
 --========================================================
@@ -292,7 +124,9 @@ for _, obj in ipairs(Lighting:GetChildren()) do
 		end)
 
 	end
+
 end
+
 
 --========================================================
 -- MATERIAL SERVICE
@@ -308,14 +142,15 @@ for _, obj in ipairs(MaterialService:GetChildren()) do
 		end)
 
 	end
+
 end
+
 
 --========================================================
 -- TERRAIN
 --========================================================
 
-local terrain =
-	Workspace:FindFirstChildOfClass("Terrain")
+local terrain = Workspace:FindFirstChildOfClass("Terrain")
 
 if terrain then
 
@@ -337,35 +172,19 @@ if terrain then
 
 end
 
+
 --========================================================
--- VFX
+-- ANIMATION CLEANUP
 --========================================================
 
-local function removeVFX(obj)
+local function cleanupAnimationObject(obj)
 
-	if obj:IsA("ParticleEmitter")
-		or obj:IsA("Trail")
-		or obj:IsA("Beam")
-		or obj:IsA("Smoke")
-		or obj:IsA("Fire")
-		or obj:IsA("Sparkles")
-		or obj:IsA("Highlight") then
-
-		safe(function()
-			obj:Destroy()
-		end)
-
-		return true
+	if not obj or not obj.Parent then
+		return
 	end
 
-	return false
-end
 
---========================================================
--- ANIMATION
---========================================================
-
-local function removeAnimation(obj)
+	-- AnimationController
 
 	if obj:IsA("AnimationController") then
 
@@ -373,8 +192,11 @@ local function removeAnimation(obj)
 			obj:Destroy()
 		end)
 
-		return true
+		return
 	end
+
+
+	-- Animator
 
 	if obj:IsA("Animator") then
 
@@ -392,12 +214,16 @@ local function removeAnimation(obj)
 
 		end)
 
+
 		safe(function()
 			obj:Destroy()
 		end)
 
-		return true
+		return
 	end
+
+
+	-- Animation
 
 	if obj:IsA("Animation") then
 
@@ -405,11 +231,78 @@ local function removeAnimation(obj)
 			obj.AnimationId = "rbxassetid://0"
 		end)
 
-		return true
 	end
 
-	return false
 end
+
+
+--========================================================
+-- CHARACTER CLEANUP
+--========================================================
+
+local function cleanupCharacter(character)
+
+	if not character or not character.Parent then
+		return
+	end
+
+
+	--====================================================
+	-- CLOTHES / ACCESSORIES
+	--====================================================
+
+	for _, child in ipairs(character:GetChildren()) do
+
+		if child:IsA("Accessory")
+			or child:IsA("Shirt")
+			or child:IsA("Pants")
+			or child:IsA("ShirtGraphic") then
+
+			safe(function()
+				child:Destroy()
+			end)
+
+		end
+
+	end
+
+
+	--====================================================
+	-- ANIMATE SCRIPT
+	--====================================================
+
+	local animate =
+		character:FindFirstChild("Animate")
+
+	if animate then
+
+		safe(function()
+			animate:Destroy()
+		end)
+
+	end
+
+
+	--====================================================
+	-- ANIMATION OBJECTS
+	--====================================================
+
+	for _, obj in ipairs(
+		character:GetDescendants()
+	) do
+
+		if obj:IsA("AnimationController")
+			or obj:IsA("Animator")
+			or obj:IsA("Animation") then
+
+			cleanupAnimationObject(obj)
+
+		end
+
+	end
+
+end
+
 
 --========================================================
 -- OBJECT OPTIMIZATION
@@ -421,21 +314,20 @@ local function optimizeObject(obj)
 		return
 	end
 
+
 	--====================================================
 	-- ANIMATION
 	--====================================================
 
-	if removeAnimation(obj) then
+	if obj:IsA("AnimationController")
+		or obj:IsA("Animator")
+		or obj:IsA("Animation") then
+
+		cleanupAnimationObject(obj)
+
 		return
 	end
 
-	--====================================================
-	-- VFX
-	--====================================================
-
-	if removeVFX(obj) then
-		return
-	end
 
 	--====================================================
 	-- SURFACE APPEARANCE
@@ -450,6 +342,65 @@ local function optimizeObject(obj)
 		return
 	end
 
+
+	--====================================================
+	-- MESHPART
+	--====================================================
+
+	if obj:IsA("MeshPart") then
+
+		-- Remove texture
+
+		safe(function()
+			obj.TextureID = ""
+		end)
+
+
+		-- Remove material variant
+
+		safe(function()
+			obj.MaterialVariant = ""
+		end)
+
+
+		-- Lowest mesh rendering cost
+
+		safe(function()
+			obj.RenderFidelity =
+				Enum.RenderFidelity.Performance
+		end)
+
+
+		-- Remove reflections
+
+		safe(function()
+			obj.Reflectance = 0
+		end)
+
+
+		-- Disable shadows
+
+		safe(function()
+			obj.CastShadow = false
+		end)
+
+
+		-- SmoothPlastic
+
+		if obj.Material ~= Enum.Material.Neon then
+
+			safe(function()
+				obj.Material =
+					Enum.Material.SmoothPlastic
+			end)
+
+		end
+
+
+		return
+	end
+
+
 	--====================================================
 	-- SPECIAL MESH
 	--====================================================
@@ -463,48 +414,6 @@ local function optimizeObject(obj)
 		return
 	end
 
-	--====================================================
-	-- MESHPART
-	--====================================================
-
-	if obj:IsA("MeshPart") then
-
-		-- Убрать текстуру
-		safe(function()
-			obj.TextureID = ""
-		end)
-
-		-- Убрать MaterialVariant
-		safe(function()
-			obj.MaterialVariant = ""
-		end)
-
-		-- Performance
-		safe(function()
-			obj.RenderFidelity = Enum.RenderFidelity.Performance
-		end)
-
-		-- Neon сохраняем
-		if obj.Material ~= Enum.Material.Neon then
-
-			safe(function()
-				obj.Material = Enum.Material.SmoothPlastic
-			end)
-
-		end
-
-		-- Shadows OFF
-		safe(function()
-			obj.CastShadow = false
-		end)
-
-		-- Reflectance OFF
-		safe(function()
-			obj.Reflectance = 0
-		end)
-
-		return
-	end
 
 	--====================================================
 	-- BASEPART
@@ -516,24 +425,30 @@ local function optimizeObject(obj)
 			obj.MaterialVariant = ""
 		end)
 
-		if obj.Material ~= Enum.Material.Neon then
-
-			safe(function()
-				obj.Material = Enum.Material.SmoothPlastic
-			end)
-
-		end
 
 		safe(function()
 			obj.CastShadow = false
 		end)
 
+
 		safe(function()
 			obj.Reflectance = 0
 		end)
 
+
+		if obj.Material ~= Enum.Material.Neon then
+
+			safe(function()
+				obj.Material =
+					Enum.Material.SmoothPlastic
+			end)
+
+		end
+
+
 		return
 	end
+
 
 	--====================================================
 	-- DECAL
@@ -548,6 +463,7 @@ local function optimizeObject(obj)
 		return
 	end
 
+
 	--====================================================
 	-- TEXTURE
 	--====================================================
@@ -560,6 +476,52 @@ local function optimizeObject(obj)
 
 		return
 	end
+
+
+	--====================================================
+	-- PARTICLES
+	--====================================================
+
+	if obj:IsA("ParticleEmitter")
+		or obj:IsA("Smoke")
+		or obj:IsA("Fire")
+		or obj:IsA("Sparkles") then
+
+		safe(function()
+			obj.Enabled = false
+		end)
+
+		return
+	end
+
+
+	--====================================================
+	-- TRAIL
+	--====================================================
+
+	if obj:IsA("Trail") then
+
+		safe(function()
+			obj.Enabled = false
+		end)
+
+		return
+	end
+
+
+	--====================================================
+	-- BEAM
+	--====================================================
+
+	if obj:IsA("Beam") then
+
+		safe(function()
+			obj.Enabled = false
+		end)
+
+		return
+	end
+
 
 	--====================================================
 	-- LIGHTS
@@ -575,6 +537,7 @@ local function optimizeObject(obj)
 
 		return
 	end
+
 
 	--====================================================
 	-- VIDEO
@@ -595,85 +558,23 @@ local function optimizeObject(obj)
 
 end
 
---========================================================
--- CHARACTER
---========================================================
-
-local function optimizeCharacter(character)
-
-	if not character or not character.Parent then
-		return
-	end
-
-	--====================================================
-	-- ACCESSORIES / CLOTHING
-	--====================================================
-
-	for _, child in ipairs(character:GetChildren()) do
-
-		if child:IsA("Accessory")
-			or child:IsA("Shirt")
-			or child:IsA("Pants")
-			or child:IsA("ShirtGraphic") then
-
-			safe(function()
-				child:Destroy()
-			end)
-
-		end
-	end
-
-	--====================================================
-	-- ANIMATE SCRIPT
-	--====================================================
-
-	local animate =
-		character:FindFirstChild("Animate")
-
-	if animate then
-
-		safe(function()
-			animate:Destroy()
-		end)
-
-	end
-
-	--====================================================
-	-- ALL CHARACTER OBJECTS
-	--====================================================
-
-	local descendants = character:GetDescendants()
-
-	for i = 1, #descendants do
-
-		local obj = descendants[i]
-
-		if obj and obj.Parent then
-			optimizeObject(obj)
-		end
-
-		if i % MAX_BATCH == 0 then
-			task.wait()
-		end
-	end
-
-end
 
 --========================================================
--- ONE-TIME WORLD OPTIMIZATION
+-- INITIAL WORLD OPTIMIZATION
 --========================================================
 
 task.spawn(function()
 
-	print("============================================")
-	print(" Arcizz0 Booster")
-	print(" Starting optimization...")
-	print("============================================")
-
-	-- Только Workspace.
 	local objects = Workspace:GetDescendants()
 
-	for i = 1, #objects do
+	local total = #objects
+
+
+	--====================================================
+	-- WORLD
+	--====================================================
+
+	for i = 1, total do
 
 		local obj = objects[i]
 
@@ -681,14 +582,21 @@ task.spawn(function()
 			optimizeObject(obj)
 		end
 
-		if i % MAX_BATCH == 0 then
+
+		-- Small batches.
+		--
+		-- Это уменьшает сильный startup freeze,
+		-- но после завершения вообще ничего не работает.
+
+		if i % 500 == 0 then
 			task.wait()
 		end
 
 	end
 
+
 	--====================================================
-	-- EXISTING PLAYERS / NPC / BRAINROTS
+	-- CURRENT CHARACTERS / NPC
 	--====================================================
 
 	for _, obj in ipairs(objects) do
@@ -705,88 +613,362 @@ task.spawn(function()
 					true
 				) then
 
-				task.spawn(function()
-
-					if obj.Parent then
-						optimizeCharacter(obj)
-					end
-
-				end)
+				cleanupCharacter(obj)
 
 			end
+
 		end
+
 	end
 
+
 	print("============================================")
-	print(" Arcizz0 Booster")
-	print(" Optimization complete!")
-	print(" Runtime optimizer: OFF")
+	print(" ULTRA FPS BOOST EXTREME v6")
+	print(" INITIAL OPTIMIZATION COMPLETE")
+	print("============================================")
+	print(" Runtime scanning : OFF")
+	print(" DescendantAdded   : OFF")
+	print(" Heartbeat         : OFF")
+	print(" RenderStepped     : OFF")
+	print(" Periodic scan     : OFF")
+	print(" Streaming handler : OFF")
 	print("============================================")
 
 end)
 
+
 --========================================================
--- PLAYER RESPAWN ONLY
---
--- Это единственное постоянное событие.
--- Оно относится только к персонажу игрока.
+-- PLAYER CHARACTER
 --========================================================
 
 local function setupPlayer(player)
 
-	-- Текущий персонаж
 	if player.Character then
 
 		task.defer(function()
 
 			if player.Character then
-				optimizeCharacter(player.Character)
+				cleanupCharacter(player.Character)
 			end
 
 		end)
+
 	end
 
-	-- Новый персонаж после смерти
+
+	-- Единственный постоянный connection.
+	-- Срабатывает только при респавне игрока.
+
 	player.CharacterAdded:Connect(function(character)
 
 		task.defer(function()
 
 			if character and character.Parent then
-				optimizeCharacter(character)
+				cleanupCharacter(character)
 			end
 
 		end)
 
 	end)
+
 end
+
+
+--========================================================
+-- EXISTING PLAYERS
+--========================================================
 
 for _, player in ipairs(Players:GetPlayers()) do
 	setupPlayer(player)
 end
 
+
+--========================================================
+-- NEW PLAYERS
+--========================================================
+
 Players.PlayerAdded:Connect(setupPlayer)
+
+
+--========================================================
+-- BOOSTER GUI
+--========================================================
+
+local function CreateBoosterGui()
+
+	local player = Players.LocalPlayer
+
+	if not player then
+		return
+	end
+
+
+	local playerGui =
+		player:FindFirstChildOfClass("PlayerGui")
+
+	if not playerGui then
+		return
+	end
+
+
+	if playerGui:FindFirstChild("Arcizz0Booster") then
+		return
+	end
+
+
+	--====================================================
+	-- SCREEN GUI
+	--====================================================
+
+	local gui = Instance.new("ScreenGui")
+
+	gui.Name = "Arcizz0Booster"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 999999
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	gui.Parent = playerGui
+
+
+	--====================================================
+	-- FRAME
+	--====================================================
+
+	local frame = Instance.new("Frame")
+
+	frame.Name = "BoosterFrame"
+
+	frame.AnchorPoint =
+		Vector2.new(0.5, 0)
+
+	frame.Position =
+		UDim2.new(0.5, 0, 0, -95)
+
+	frame.Size =
+		UDim2.new(0, 390, 0, 70)
+
+	frame.BackgroundColor3 =
+		Color3.fromRGB(12, 2, 2)
+
+	frame.BorderSizePixel = 0
+	frame.ZIndex = 10
+
+	frame.Parent = gui
+
+
+	--====================================================
+	-- CORNER
+	--====================================================
+
+	local corner = Instance.new("UICorner")
+
+	corner.CornerRadius =
+		UDim.new(0, 13)
+
+	corner.Parent = frame
+
+
+	--====================================================
+	-- STROKE
+	--====================================================
+
+	local stroke = Instance.new("UIStroke")
+
+	stroke.Thickness = 2
+	stroke.Transparency = 0.15
+
+	stroke.Color =
+		Color3.fromRGB(125, 0, 0)
+
+	stroke.Parent = frame
+
+
+	--====================================================
+	-- TOP LINE
+	--====================================================
+
+	local topLine = Instance.new("Frame")
+
+	topLine.Position =
+		UDim2.new(0, 0, 0, 0)
+
+	topLine.Size =
+		UDim2.new(1, 0, 0, 3)
+
+	topLine.BackgroundColor3 =
+		Color3.fromRGB(180, 0, 0)
+
+	topLine.BorderSizePixel = 0
+	topLine.ZIndex = 11
+
+	topLine.Parent = frame
+
+
+	local topCorner =
+		Instance.new("UICorner")
+
+	topCorner.CornerRadius =
+		UDim.new(0, 3)
+
+	topCorner.Parent = topLine
+
+
+	--====================================================
+	-- TITLE
+	--====================================================
+
+	local title = Instance.new("TextLabel")
+
+	title.Name = "Title"
+
+	title.AnchorPoint =
+		Vector2.new(0.5, 0.5)
+
+	title.Position =
+		UDim2.new(0.5, 0, 0.5, 0)
+
+	title.Size =
+		UDim2.new(1, -30, 1, -10)
+
+	title.BackgroundTransparency = 1
+
+	title.Text = "Arcizz0 Booster"
+
+	title.Font =
+		Enum.Font.GothamBold
+
+	title.TextSize = 27
+
+	title.TextXAlignment =
+		Enum.TextXAlignment.Center
+
+	title.TextYAlignment =
+		Enum.TextYAlignment.Center
+
+	title.TextColor3 =
+		Color3.fromRGB(255, 0, 0)
+
+	title.ZIndex = 12
+
+	title.Parent = frame
+
+
+	--====================================================
+	-- OPEN
+	--====================================================
+
+	local openTween = TweenService:Create(
+
+		frame,
+
+		TweenInfo.new(
+			0.65,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+
+		{
+			Position =
+				UDim2.new(0.5, 0, 0, 18)
+		}
+
+	)
+
+
+	--====================================================
+	-- SHOW
+	--====================================================
+
+	openTween:Play()
+
+
+	--====================================================
+	-- CLOSE
+	--====================================================
+
+	task.delay(2.5, function()
+
+		if not gui.Parent then
+			return
+		end
+
+
+		local closeTween =
+			TweenService:Create(
+
+				frame,
+
+				TweenInfo.new(
+					0.45,
+					Enum.EasingStyle.Quint,
+					Enum.EasingDirection.In
+				),
+
+				{
+					Position =
+						UDim2.new(
+							0.5,
+							0,
+							0,
+							-95
+						)
+				}
+
+			)
+
+
+		closeTween:Play()
+
+
+		closeTween.Completed:Connect(function()
+
+			if gui then
+				gui:Destroy()
+			end
+
+		end)
+
+	end)
+
+end
+
+
+--========================================================
+-- GUI START
+--========================================================
+
+task.defer(CreateBoosterGui)
+
 
 --========================================================
 -- FINAL
 --========================================================
 
 print("============================================")
-print(" ARCIZZ0 ULTRA FPS v6")
+print(" ULTRA FPS BOOST EXTREME v6")
+print(" MAX PERFORMANCE MODE")
 print("============================================")
-print("SmoothPlastic    : ON")
-print("Neon             : ALLOWED")
-print("MaterialVariant  : REMOVED")
-print("MaterialService  : CLEAN")
-print("Mesh Texture     : REMOVED")
-print("SurfaceAppearance: REMOVED")
-print("VFX              : REMOVED")
+print("Graphics Quality : 1")
+print("Lighting         : COMPATIBILITY")
 print("Shadows          : OFF")
+print("Materials        : SMOOTHPLASTIC")
+print("Neon             : ALLOWED")
+print("MaterialVariant  : OFF")
+print("Mesh Texture     : OFF")
+print("SurfaceAppearance: OFF")
+print("Decals           : OFF")
+print("Textures         : OFF")
+print("Particles        : OFF")
 print("Lights           : OFF")
+print("Trails           : OFF")
+print("Beams            : OFF")
 print("Animations       : OFF")
-print("Animator         : REMOVED")
-print("AnimationControl : REMOVED")
-print("Periodic Scan    : NONE")
-print("Heartbeat        : NONE")
-print("RenderStepped    : NONE")
-print("World Monitoring : NONE")
+print("Accessories      : OFF")
+print("--------------------------------------------")
+print("DescendantAdded  : OFF")
+print("Heartbeat        : OFF")
+print("RenderStepped    : OFF")
+print("Periodic Scan    : OFF")
+print("Runtime Cost     : NEAR ZERO")
 print("============================================")
