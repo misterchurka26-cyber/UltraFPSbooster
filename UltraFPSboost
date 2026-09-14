@@ -1,0 +1,429 @@
+--========================================================
+-- ULTRA FPS BOOST
+-- Агрессивное снижение графики на клиенте
+--========================================================
+
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
+local UserSettings = game:GetService("UserSettings")
+
+local player = Players.LocalPlayer
+
+--========================================================
+-- НАСТРОЙКИ
+--========================================================
+
+local CONFIG = {
+	-- Убирать текстуры
+	RemoveTextures = true,
+
+	-- Убирать SurfaceAppearance
+	RemoveSurfaceAppearance = true,
+
+	-- Убирать тени
+	RemoveShadows = true,
+
+	-- Упрощать материалы
+	SimplifyMaterials = true,
+
+	-- Убирать отражения
+	RemoveReflectance = true,
+
+	-- Отключать частицы
+	DisableParticles = true,
+
+	-- Отключать Trail / Beam
+	DisableTrails = true,
+
+	-- Отключать светящиеся источники
+	DisableLights = true,
+
+	-- Упрощать Terrain
+	SimplifyTerrain = true,
+
+	-- Делать экран немного темнее
+	DarkenScreen = true,
+
+	-- Выключить пост-эффекты
+	DisablePostEffects = true,
+
+	-- Сделать дальний мир менее заметным
+	UseFog = false,
+
+	-- Агрессивность материала
+	Material = Enum.Material.Plastic,
+}
+
+--========================================================
+-- GRAPHICS QUALITY
+--========================================================
+
+pcall(function()
+	local gameSettings = UserSettings():GetService("UserGameSettings")
+
+	-- Самый низкий доступный уровень качества
+	gameSettings.GraphicsQualityLevel = 1
+end)
+
+-- Дополнительная попытка через RenderSettings
+pcall(function()
+	settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+end)
+
+--========================================================
+-- LIGHTING
+--========================================================
+
+local function optimizeLighting()
+
+	pcall(function()
+		Lighting.GlobalShadows = false
+	end)
+
+	pcall(function()
+		Lighting.EnvironmentDiffuseScale = 0
+	end)
+
+	pcall(function()
+		Lighting.EnvironmentSpecularScale = 0
+	end)
+
+	pcall(function()
+		Lighting.Brightness = 1
+	end)
+
+	pcall(function()
+		Lighting.ShadowSoftness = 0
+	end)
+
+	pcall(function()
+		Lighting.Technology = Enum.Technology.Compatibility
+	end)
+
+	-- Удаляем дорогие пост-эффекты
+	if CONFIG.DisablePostEffects then
+		for _, obj in ipairs(Lighting:GetChildren()) do
+			if obj:IsA("BloomEffect")
+				or obj:IsA("BlurEffect")
+				or obj:IsA("ColorCorrectionEffect")
+				or obj:IsA("DepthOfFieldEffect")
+				or obj:IsA("SunRaysEffect") then
+
+				obj.Enabled = false
+			end
+		end
+	end
+
+	--====================================================
+	-- ТЕМНАЯ КАРТИНКА
+	--====================================================
+
+	if CONFIG.DarkenScreen then
+		local color = Lighting:FindFirstChild("UltraFPS_Dark")
+
+		if not color then
+			color = Instance.new("ColorCorrectionEffect")
+			color.Name = "UltraFPS_Dark"
+			color.Parent = Lighting
+		end
+
+		color.Enabled = true
+		color.Brightness = -0.08
+		color.Contrast = -0.05
+		color.Saturation = -0.15
+	end
+
+	--====================================================
+	-- FOG
+	--====================================================
+
+	if CONFIG.UseFog then
+		pcall(function()
+			Lighting.FogColor = Color3.fromRGB(40, 40, 40)
+			Lighting.FogStart = 80
+			Lighting.FogEnd = 250
+		end)
+	end
+end
+
+optimizeLighting()
+
+--========================================================
+-- ОБРАБОТКА OBJECT
+--========================================================
+
+local function optimizeObject(obj)
+
+	--====================================================
+	-- BASEPART
+	--====================================================
+
+	if obj:IsA("BasePart") then
+
+		if CONFIG.RemoveShadows then
+			obj.CastShadow = false
+		end
+
+		if CONFIG.RemoveReflectance then
+			obj.Reflectance = 0
+		end
+
+		if CONFIG.SimplifyMaterials then
+			pcall(function()
+				obj.Material = CONFIG.Material
+			end)
+		end
+
+		-- MeshPart
+		if obj:IsA("MeshPart") and CONFIG.RemoveTextures then
+			pcall(function()
+				obj.TextureID = ""
+			end)
+
+			pcall(function()
+				obj.RenderFidelity = Enum.RenderFidelity.Performance
+			end)
+		end
+	end
+
+	--====================================================
+	-- DECAL / TEXTURE
+	--====================================================
+
+	if CONFIG.RemoveTextures then
+
+		if obj:IsA("Decal") or obj:IsA("Texture") then
+			obj.Transparency = 1
+		end
+
+		-- SurfaceAppearance может быть очень тяжелым
+		if obj:IsA("SurfaceAppearance") then
+			if CONFIG.RemoveSurfaceAppearance then
+				obj:Destroy()
+				return
+			end
+		end
+	end
+
+	--====================================================
+	-- PARTICLES
+	--====================================================
+
+	if CONFIG.DisableParticles then
+
+		if obj:IsA("ParticleEmitter")
+			or obj:IsA("Smoke")
+			or obj:IsA("Fire")
+			or obj:IsA("Sparkles") then
+
+			obj.Enabled = false
+	end
+	end
+
+	--====================================================
+	-- TRAIL / BEAM
+	--====================================================
+
+	if CONFIG.DisableTrails then
+
+		if obj:IsA("Trail") or obj:IsA("Beam") then
+			obj.Enabled = false
+		end
+	end
+
+	--====================================================
+	-- LIGHTS
+	--====================================================
+
+	if CONFIG.DisableLights then
+
+		if obj:IsA("PointLight")
+			or obj:IsA("SpotLight")
+			or obj:IsA("SurfaceLight") then
+
+			obj.Enabled = false
+		end
+	end
+
+	--====================================================
+	-- POST EFFECTS
+	--====================================================
+
+	if CONFIG.DisablePostEffects then
+
+		if obj:IsA("BloomEffect")
+			or obj:IsA("BlurEffect")
+			or obj:IsA("ColorCorrectionEffect")
+			or obj:IsA("DepthOfFieldEffect")
+			or obj:IsA("SunRaysEffect") then
+
+			obj.Enabled = false
+		end
+	end
+
+	--====================================================
+	-- GUI IMAGES
+	-- НЕ УДАЛЯЕМ GUI ПОЛНОСТЬЮ
+	--====================================================
+
+	-- Можно убрать изображения только в 3D-мире,
+	-- поэтому ImageLabels здесь специально не трогаем.
+end
+
+--========================================================
+-- ОБРАБОТАТЬ ВСЁ УЖЕ СУЩЕСТВУЮЩЕЕ
+--========================================================
+
+for _, obj in ipairs(Workspace:GetDescendants()) do
+	optimizeObject(obj)
+end
+
+--========================================================
+-- НОВЫЕ ОБЪЕКТЫ
+--========================================================
+
+Workspace.DescendantAdded:Connect(function(obj)
+
+	-- маленькая задержка позволяет дождаться свойств
+	task.defer(function()
+
+		if obj.Parent then
+			optimizeObject(obj)
+		end
+
+	end)
+
+end)
+
+--========================================================
+-- TERRAIN
+--========================================================
+
+if CONFIG.SimplifyTerrain then
+
+	local terrain = Workspace:FindFirstChildOfClass("Terrain")
+
+	if terrain then
+
+		pcall(function()
+			terrain.WaterWaveSize = 0
+		end)
+
+		pcall(function()
+			terrain.WaterWaveSpeed = 0
+		end)
+
+		pcall(function()
+			terrain.WaterReflectance = 0
+		end)
+
+		pcall(function()
+			terrain.WaterTransparency = 1
+		end)
+	end
+end
+
+--========================================================
+-- CHARACTER
+--========================================================
+
+local function optimizeCharacter(character)
+
+	for _, obj in ipairs(character:GetDescendants()) do
+
+		if obj:IsA("BasePart") then
+			obj.CastShadow = false
+
+			pcall(function()
+				obj.Material = Enum.Material.Plastic
+			end)
+
+			obj.Reflectance = 0
+		end
+
+		if obj:IsA("Decal") or obj:IsA("Texture") then
+			obj.Transparency = 1
+		end
+
+		if obj:IsA("SurfaceAppearance") then
+			obj:Destroy()
+		end
+	end
+end
+
+if player.Character then
+	task.defer(function()
+		optimizeCharacter(player.Character)
+	end)
+end
+
+player.CharacterAdded:Connect(function(character)
+	task.wait(0.5)
+	optimizeCharacter(character)
+end)
+
+--========================================================
+-- ПОВТОРНАЯ ОПТИМИЗАЦИЯ
+--========================================================
+
+task.spawn(function()
+
+	while task.wait(5) do
+
+		-- Иногда игра снова создает эффекты/текстуры,
+		-- поэтому периодически чистим их.
+
+		for _, obj in ipairs(Workspace:GetDescendants()) do
+
+			if obj:IsA("SurfaceAppearance") then
+				obj:Destroy()
+
+			elseif obj:IsA("ParticleEmitter")
+				or obj:IsA("Trail")
+				or obj:IsA("Beam")
+				or obj:IsA("Smoke")
+				or obj:IsA("Fire")
+				or obj:IsA("Sparkles") then
+
+				obj.Enabled = false
+
+			elseif obj:IsA("PointLight")
+				or obj:IsA("SpotLight")
+				or obj:IsA("SurfaceLight") then
+
+				obj.Enabled = false
+
+			elseif obj:IsA("BasePart") then
+
+				obj.CastShadow = false
+				obj.Reflectance = 0
+
+				pcall(function()
+					obj.Material = Enum.Material.Plastic
+				end)
+
+				if obj:IsA("MeshPart") then
+					pcall(function()
+						obj.TextureID = ""
+						obj.RenderFidelity = Enum.RenderFidelity.Performance
+					end)
+				end
+			end
+		end
+
+		optimizeLighting()
+	end
+end)
+
+print("========================================")
+print("ULTRA FPS BOOST ENABLED")
+print("Textures: OFF")
+print("SurfaceAppearance: OFF")
+print("Shadows: OFF")
+print("Particles: OFF")
+print("Lights: OFF")
+print("Reflectance: OFF")
+print("Materials: PLASTIC")
+print("Graphics: LOW")
+print("========================================")
